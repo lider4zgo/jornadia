@@ -26,8 +26,18 @@ interface Credentials {
 const randomPin = () => String(crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000).padStart(6, '0');
 
 /** Alta de trabajadores, NIP y foto de registro. */
-export function People({ me }: { me: Me }) {
+export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
   const company = me.company!;
+  const [trackBreaks, setTrackBreaks] = useState(company.track_breaks);
+
+  async function toggleBreaks(value: boolean) {
+    setTrackBreaks(value);
+    const { error: err } = await supabase.from('companies').update({ track_breaks: value }).eq('id', company.id);
+    if (err) {
+      setTrackBreaks(!value);
+      setError('Solo el dueño de la cuenta puede cambiar esta opción.');
+    } else onChanged();
+  }
   const [list, setList] = useState<EmployeeRow[] | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [creds, setCreds] = useState<Credentials | null>(null);
@@ -82,6 +92,16 @@ export function People({ me }: { me: Me }) {
           Agregar trabajador
         </button>
       </div>
+
+      <label className="check">
+        <input type="checkbox" checked={trackBreaks} onChange={(e) => void toggleBreaks(e.target.checked)} disabled={me.role !== 'owner'} />
+        <span>
+          Registrar hora de comida
+          <span className="muted" style={{ display: 'block', fontSize: '0.9rem' }}>
+            Opcional. Si está activo, los trabajadores verán los botones de inicio y fin de comida y ese tiempo se descuenta de la jornada.
+          </span>
+        </span>
+      </label>
 
       {error && <div className="notice error">{error}</div>}
       {creds && <CredentialCard creds={creds} onClose={() => setCreds(null)} />}

@@ -264,6 +264,13 @@ await test('un usuario no puede hacerse administrador de la plataforma', async (
   await expectError(asUser(ids.worker1, `insert into public.platform_admins (user_id) values ($1)`, [ids.worker1]));
 });
 
+await test('la comida es opcional y el dueño puede activarla', async () => {
+  const { rows } = await db.query(`select track_breaks from public.companies where id = $1`, [ids.companyA]);
+  assert(rows[0].track_breaks === false, 'por defecto no se registra la comida');
+  const ok = await asUser(ids.owner, `update public.companies set track_breaks = true where id = $1 returning track_breaks`, [ids.companyA]);
+  assert(ok.rows[0]?.track_breaks === true, 'el dueño debería poder activarla');
+});
+
 console.log(`\n${passed} pruebas correctas, ${failed} fallidas\n`);
 await db.close();
 process.exit(failed ? 1 : 0);

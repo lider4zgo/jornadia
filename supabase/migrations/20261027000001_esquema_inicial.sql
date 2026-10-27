@@ -52,6 +52,8 @@ create table public.companies (
   selfie_retention_days integer not null default 365 check (selfie_retention_days >= 30),
   stripe_customer_id text,
   whatsapp_support   text,
+  -- Registrar inicio y fin de comida es opcional; si está apagado no se muestra al trabajador
+  track_breaks       boolean not null default false,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
@@ -568,7 +570,7 @@ revoke update, delete on public.punch_corrections, public.week_acknowledgments, 
 
 -- El dueño puede editar datos de su empresa, pero no su plan, estado, límites ni código
 revoke insert, update, delete on public.companies from authenticated;
-grant update (name, legal_name, rfc, timezone, weekly_hour_limit, face_match_threshold, selfie_retention_days, whatsapp_support)
+grant update (name, legal_name, rfc, timezone, weekly_hour_limit, face_match_threshold, selfie_retention_days, whatsapp_support, track_breaks)
   on public.companies to authenticated;
 -- La biometría solo la inserta o borra la API; los admins solo pueden aprobarla
 revoke insert, delete on public.employee_faces from authenticated;

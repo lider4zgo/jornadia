@@ -14,6 +14,7 @@ export interface Company {
   weekly_hour_limit: number;
   face_match_threshold: number;
   whatsapp_support: string | null;
+  track_breaks: boolean;
 }
 
 export interface Me {

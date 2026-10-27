@@ -26,7 +26,7 @@ export function Panel({ me, onChanged }: { me: Me; onChanged: () => void }) {
       <div style={{ paddingTop: 18 }}>
         {tab === 'today' && <Today me={me} />}
         {tab === 'report' && <Report me={me} />}
-        {tab === 'people' && <People me={me} />}
+        {tab === 'people' && <People me={me} onChanged={onChanged} />}
         {tab === 'sites' && <Sites me={me} onChanged={onChanged} />}
       </div>
     </>

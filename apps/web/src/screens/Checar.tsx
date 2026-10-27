@@ -49,7 +49,11 @@ export function Checar({ me, onPunched }: { me: Me; onPunched: () => void }) {
     return null;
   }, [pending, me.lastPunch, me.sites]);
 
-  const next = allowedNextKinds(last?.kind ?? null).sort((a, b) => PRIORITY.indexOf(a) - PRIORITY.indexOf(b));
+  // La comida es opcional: solo se ofrece si la empresa la registra (o si ya hay una comida abierta)
+  const trackBreaks = me.company?.track_breaks === true;
+  const next = allowedNextKinds(last?.kind ?? null)
+    .filter((k) => trackBreaks || k !== 'break_start')
+    .sort((a, b) => PRIORITY.indexOf(a) - PRIORITY.indexOf(b));
   const [primary, ...secondary] = next;
 
   function start(kind: PunchKind) {

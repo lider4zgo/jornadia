@@ -23,7 +23,7 @@ me.get('/', async (c) => {
   const [{ data: company }, { data: sites }, { data: employee }, { data: companies }] = await Promise.all([
     admin
       .from('companies')
-      .select('id, name, code, status, plan, employee_limit, trial_ends_at, timezone, weekly_hour_limit, face_match_threshold, whatsapp_support')
+      .select('id, name, code, status, plan, employee_limit, trial_ends_at, timezone, weekly_hour_limit, face_match_threshold, whatsapp_support, track_breaks')
       .eq('id', companyId)
       .single(),
     admin.from('sites').select('id, name, address, lat, lng, radius_m, geofence_mode').eq('company_id', companyId).eq('active', true).order('name'),
