@@ -1,0 +1,28 @@
+{
+  "name": "@jornadia/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "models": "node scripts/copy-models.mjs",
+    "dev": "npm run models && vite",
+    "build": "npm run models && tsc --noEmit -p . && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@jornadia/core": "*",
+    "@supabase/supabase-js": "^2.45.0",
+    "@vladmandic/human": "^3.3.0",
+    "idb-keyval": "^6.2.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "vite": "^5.4.10",
+    "vite-plugin-pwa": "^0.20.5"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "jornadia",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Jornadia — registro electrónico de jornada laboral (LFT 2027) para personal en campo",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @jornadia/web",
+    "dev:api": "npm run dev -w @jornadia/api",
+    "build": "npm run build -w @jornadia/core && npm run build -w @jornadia/web && npm run typecheck -w @jornadia/api",
+    "test": "npm run test -w @jornadia/core && npm run test -w @jornadia/api && npm run test:db",
+    "test:db": "node supabase/tests/run.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

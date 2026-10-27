@@ -1,0 +1,27 @@
+# Un solo Worker sirve la app web (archivos estáticos) y la API (/api/*).
+# Misma dirección para ambos: sin problemas de CORS y un solo despliegue.
+name = "jornadia"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "jornadia-files"
+
+[vars]
+# Reemplaza con la URL de tu proyecto "jornadia" en Supabase (Project Settings → API)
+SUPABASE_URL = "https://TU-PROYECTO.supabase.co"
+# Dominio ficticio para las cuentas de trabajadores (no se envían correos)
+WORKER_EMAIL_DOMAIN = "trabajadores.jornadia.mx"
+
+# Secretos (no van en este archivo):
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   wrangler secret put SUPABASE_ANON_KEY
+# Para desarrollo local, crea apps/api/.dev.vars con esas dos variables.

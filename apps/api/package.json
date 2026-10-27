@@ -1,0 +1,22 @@
+{
+  "name": "@jornadia/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "npm run build -w @jornadia/web && wrangler deploy",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@jornadia/core": "*",
+    "@supabase/supabase-js": "^2.45.0",
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251001.0",
+    "vitest": "^2.1.0",
+    "wrangler": "^4.0.0"
+  }
+}

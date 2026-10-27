@@ -1,0 +1,4 @@
+# Copia este archivo como .dev.vars para correr la API localmente (npm run dev:api).
+# Valores en Supabase → Project Settings → API. Este archivo NO se sube a GitHub.
+SUPABASE_ANON_KEY=tu-llave-anon
+SUPABASE_SERVICE_ROLE_KEY=tu-llave-service-role

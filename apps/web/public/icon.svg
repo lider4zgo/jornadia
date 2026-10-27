@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#12305A"/>
+  <!-- Pin de ubicación que contiene la carátula de un reloj -->
+  <path d="M256 84c-82 0-148 64-148 144 0 104 148 216 148 216s148-112 148-216c0-80-66-144-148-144z" fill="#F5F7FA"/>
+  <circle cx="256" cy="228" r="86" fill="#12305A"/>
+  <path d="M256 168v64l42 26" fill="none" stroke="#F2600C" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
