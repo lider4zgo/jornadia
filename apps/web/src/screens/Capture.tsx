@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cameraProfile } from '../lib/device';
-import { openCamera, runFaceCheck, type CheckResult, type CheckStep } from '../lib/face';
+import { openCamera, runFaceCheck, type CheckResult, type CheckStep, type FaceDebug } from '../lib/face';
+
+// Con ?debug en la dirección se muestran las métricas de detección (para calibrar en cada teléfono)
+const DEBUG = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug');
 
 const ORDER: CheckStep[] = ['position', 'blink', 'hold', 'done'];
 
@@ -24,6 +27,7 @@ export function Capture({ title, reference, onDone, onCancel, facing = 'user', a
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [debug, setDebug] = useState<FaceDebug | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -42,6 +46,7 @@ export function Capture({ title, reference, onDone, onCancel, facing = 'user', a
           signal: controller.signal,
           minFaceRatio: profile.minFaceRatio,
           manual: allowManual ? manual.current : undefined,
+          onDebug: DEBUG ? setDebug : undefined,
         });
         if (!controller.signal.aborted) onDone(result);
       } catch (err) {
@@ -130,6 +135,12 @@ export function Capture({ title, reference, onDone, onCancel, facing = 'user', a
             </button>
           )}
           <p className="hint">{hint}</p>
+          {DEBUG && debug && (
+            <p className="hint" style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.8rem' }}>
+              {debug.fps} cuadros/s, rostros {debug.faces}, tamaño {debug.ratio} (mín. {profile.minFaceRatio}), calidad {debug.score}, vida{' '}
+              {debug.live}, real {debug.real}, ojos {debug.ear ?? '–'} / {debug.baseline ?? '–'}
+            </p>
+          )}
         </>
       )}
     </div>
