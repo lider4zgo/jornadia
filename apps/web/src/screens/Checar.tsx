@@ -7,6 +7,7 @@ import { getPosition, LocationError, type Position } from '../lib/geo';
 import { toCompressedJpeg } from '../lib/image';
 import { dismiss, enqueue, onQueueChange, punchForm, type QueuedPunch } from '../lib/queue';
 import { useOnline, useServerNow } from '../common';
+import { isMobileDevice } from '../lib/device';
 import { Capture } from './Capture';
 import type { Me } from '../types';
 
@@ -93,6 +94,7 @@ export function Checar({ me, onPunched }: { me: Me; onPunched: () => void }) {
         device_info: {
           live: Math.round(face.live * 1000) / 1000,
           blinked: face.blinked,
+          device: isMobileDevice() ? 'celular' : 'computadora',
           screen: `${screen.width}x${screen.height}`,
           lang: navigator.language,
         },

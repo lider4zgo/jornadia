@@ -1,15 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { cameraProfile } from '../lib/device';
 import { openCamera, runFaceCheck, type CheckResult, type CheckStep } from '../lib/face';
-
-const PROMPTS: Record<CheckStep, string> = {
-  loading: 'Preparando la cámara',
-  position: 'Coloca tu rostro en el óvalo',
-  closer: 'Acércate un poco más',
-  'one-face': 'Solo debe aparecer una persona',
-  blink: 'Ahora parpadea',
-  hold: 'Quédate quieto',
-  done: 'Listo',
-};
 
 const ORDER: CheckStep[] = ['position', 'blink', 'hold', 'done'];
 
@@ -20,24 +11,38 @@ interface Props {
   onCancel: () => void;
   /** 'environment' = cámara trasera, para que el supervisor fotografíe al trabajador */
   facing?: 'user' | 'environment';
+  /** Foto de registro en persona: muestra el botón "Tomar foto" sin exigir parpadeo */
+  allowManual?: boolean;
 }
 
 /** Pantalla completa de cámara con el reto de parpadeo. */
-export function Capture({ title, reference, onDone, onCancel, facing = 'user' }: Props) {
+export function Capture({ title, reference, onDone, onCancel, facing = 'user', allowManual = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const manual = useRef({ requested: false });
+  const profile = useMemo(() => cameraProfile(), []);
   const [step, setStep] = useState<CheckStep>('loading');
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
     let stream: MediaStream | null = null;
+    manual.current = { requested: false };
     setError(null);
+    setReady(false);
     setStep('loading');
     (async () => {
       try {
-        stream = await openCamera(videoRef.current!, facing);
-        const result = await runFaceCheck(videoRef.current!, { reference, onStep: setStep, signal: controller.signal });
+        stream = await openCamera(videoRef.current!, facing, profile);
+        const result = await runFaceCheck(videoRef.current!, {
+          reference,
+          onStep: setStep,
+          onReady: setReady,
+          signal: controller.signal,
+          minFaceRatio: profile.minFaceRatio,
+          manual: allowManual ? manual.current : undefined,
+        });
         if (!controller.signal.aborted) onDone(result);
       } catch (err) {
         if ((err as DOMException)?.name === 'AbortError') return;
@@ -54,6 +59,26 @@ export function Capture({ title, reference, onDone, onCancel, facing = 'user' }:
   }, [attempt]);
 
   const reached = Math.max(0, ORDER.indexOf(step === 'closer' || step === 'one-face' ? 'position' : step));
+  const mirrored = facing === 'user';
+
+  const prompts: Record<CheckStep, string> = {
+    loading: 'Preparando la cámara',
+    position: allowManual ? 'Encuadra el rostro en el óvalo' : 'Coloca tu rostro en el óvalo',
+    closer: profile.mobile ? 'Acércate un poco más' : 'Acércate a la cámara',
+    'one-face': 'Solo debe aparecer una persona',
+    blink: allowManual ? 'Pídele que parpadee o toma la foto' : 'Ahora parpadea',
+    hold: 'Quédate quieto',
+    done: 'Listo',
+  };
+
+  const hint =
+    step === 'loading'
+      ? 'La primera vez puede tardar unos segundos en preparar la verificación.'
+      : !profile.mobile
+        ? 'Siéntate frente a la cámara de la computadora, con luz de frente y sin gorra ni lentes oscuros.'
+        : facing === 'environment'
+          ? 'Apunta al rostro del trabajador, con luz de frente y sin gorra ni lentes oscuros.'
+          : 'Busca luz de frente. Quítate gorra y lentes oscuros.';
 
   return (
     <div className="camera" role="dialog" aria-modal="true" aria-label={title}>
@@ -64,13 +89,13 @@ export function Capture({ title, reference, onDone, onCancel, facing = 'user' }:
         </button>
       </header>
 
-      <div className="viewfinder" data-step={step}>
+      <div className="viewfinder" data-step={step} data-desktop={!profile.mobile || undefined}>
         <video
           ref={videoRef}
           playsInline
           muted
           aria-label={facing === 'user' ? 'Vista de la cámara frontal' : 'Vista de la cámara trasera'}
-          style={facing === 'environment' ? { transform: 'none' } : undefined}
+          style={mirrored ? undefined : { transform: 'none' }}
         />
       </div>
 
@@ -86,20 +111,25 @@ export function Capture({ title, reference, onDone, onCancel, facing = 'user' }:
       ) : (
         <>
           <p className="prompt" aria-live="polite">
-            {PROMPTS[step]}
+            {prompts[step]}
           </p>
           <div className="steps" aria-hidden="true">
             {ORDER.map((s, i) => (
               <span key={s} className={i <= reached && step !== 'loading' ? 'on' : ''} />
             ))}
           </div>
-          <p className="hint">
-            {step === 'loading'
-              ? 'La primera vez puede tardar unos segundos en preparar la verificación.'
-              : facing === 'environment'
-                ? 'Apunta al rostro del trabajador, con luz de frente y sin gorra ni lentes oscuros.'
-                : 'Busca luz de frente. Quítate gorra y lentes oscuros.'}
-          </p>
+          {allowManual && (
+            <button
+              className="btn primary block"
+              disabled={!ready || step === 'done'}
+              onClick={() => {
+                manual.current.requested = true;
+              }}
+            >
+              {ready ? 'Tomar foto' : 'Esperando un rostro…'}
+            </button>
+          )}
+          <p className="hint">{hint}</p>
         </>
       )}
     </div>

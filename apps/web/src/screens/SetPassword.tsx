@@ -33,7 +33,7 @@ export function SetPassword({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="shell">
-      <form className="content stack" style={{ paddingTop: 32 }} onSubmit={submit} noValidate>
+      <form className="content" style={{ paddingTop: 32 }} onSubmit={submit} noValidate>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Mark className="mark" />
           <h1>Nueva contraseña</h1>

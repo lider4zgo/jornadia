@@ -3,6 +3,7 @@ import { api, ApiError, NetworkError } from '../lib/api';
 import { faceModelVersion, type CheckResult } from '../lib/face';
 import { toCompressedJpeg } from '../lib/image';
 import { Capture } from '../screens/Capture';
+import { isMobileDevice } from '../lib/device';
 
 interface Props {
   employee: { id: string; full_name: string; employee_number: string };
@@ -18,7 +19,9 @@ interface Props {
 export function EnrollFace({ employee, onClose, onEnrolled }: Props) {
   const [step, setStep] = useState<'intro' | 'capture' | 'saving'>('intro');
   const [error, setError] = useState<string | null>(null);
-  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const mobile = isMobileDevice();
+  // En celular conviene la cámara trasera (el supervisor apunta al trabajador); en la PC solo hay cámara web
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>(mobile ? 'environment' : 'user');
 
   async function save(result: CheckResult) {
     setStep('saving');
@@ -52,6 +55,7 @@ export function EnrollFace({ employee, onClose, onEnrolled }: Props) {
         title={`Foto de ${employee.full_name.split(' ')[0]}`}
         reference={null}
         facing={facingMode}
+        allowManual
         onDone={(r) => void save(r)}
         onCancel={() => setStep('intro')}
       />
@@ -63,23 +67,34 @@ export function EnrollFace({ employee, onClose, onEnrolled }: Props) {
       <div className="sheet" style={{ width: 'min(100%, 460px)' }}>
         <h2 id="enroll-title">Foto de registro de {employee.full_name}</h2>
         <p>
-          Tómala frente a la persona, con la cámara de tu celular. Será la referencia para verificar su rostro cada vez que cheque.
+          Tómala frente a la persona. Será la referencia para verificar su rostro cada vez que cheque.
         </p>
         <ul className="stack muted" style={{ margin: 0, paddingLeft: 20 }}>
           <li>Confirma que es la persona correcta (número {employee.employee_number}).</li>
           <li>Luz de frente; sin gorra, casco ni lentes oscuros.</li>
           <li>Pídele que mire a la cámara y parpadee cuando se le indique.</li>
         </ul>
-        <div className="segmented" role="group" aria-label="Cámara">
-          <button type="button" aria-pressed={facingMode === 'environment'} onClick={() => setFacingMode('environment')}>
-            Cámara trasera
-          </button>
-          <button type="button" aria-pressed={facingMode === 'user'} onClick={() => setFacingMode('user')}>
-            Cámara frontal
-          </button>
-        </div>
+        {mobile ? (
+          <>
+            <div className="segmented" role="group" aria-label="Cámara">
+              <button type="button" aria-pressed={facingMode === 'environment'} onClick={() => setFacingMode('environment')}>
+                Cámara trasera
+              </button>
+              <button type="button" aria-pressed={facingMode === 'user'} onClick={() => setFacingMode('user')}>
+                Cámara frontal
+              </button>
+            </div>
+            <p className="muted" style={{ fontSize: '0.9rem' }}>
+              Con la trasera tú apuntas al trabajador. Con la frontal, él mira la pantalla mientras tú supervisas.
+            </p>
+          </>
+        ) : (
+          <p className="muted" style={{ fontSize: '0.9rem' }}>
+            Se usará la cámara de esta computadora. Pide al trabajador que se siente frente a ella, a unos 50 cm.
+          </p>
+        )}
         <p className="muted" style={{ fontSize: '0.9rem' }}>
-          Con la trasera tú apuntas al trabajador. Con la frontal, él mira la pantalla mientras tú supervisas.
+          Cuando el rostro esté bien encuadrado, toca <b>Tomar foto</b>, o pídele que parpadee y se tomará sola.
         </p>
         {error && (
           <div className="notice error" role="alert">

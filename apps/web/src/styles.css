@@ -386,6 +386,12 @@ input.pin {
   background: #0a1c36;
   transition: border-color 0.25s ease;
 }
+.viewfinder[data-desktop] video {
+  /* Cámara web horizontal: el óvalo es más ancho para que quepa el rostro */
+  width: min(70vw, 420px);
+  aspect-ratio: 4 / 3;
+  border-radius: 50%;
+}
 .viewfinder[data-step='blink'] video,
 .viewfinder[data-step='hold'] video { border-color: #fff; }
 .viewfinder[data-step='done'] video { border-color: #4ade80; }
