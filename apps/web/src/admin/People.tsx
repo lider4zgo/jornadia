@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import type { Me } from '../types';
+import { EnrollFace } from './EnrollFace';
 
 interface EmployeeRow {
   id: string;
@@ -12,7 +13,7 @@ interface EmployeeRow {
   active: boolean;
   consent_confirmed_at: string | null;
   default_site_id: string | null;
-  employee_faces: { employee_id: string } | null;
+  face_enrolled_at: string | null;
 }
 
 interface Credentials {
@@ -20,14 +21,13 @@ interface Credentials {
   phone: string | null;
   code: string;
   number: string;
-  pin: string;
 }
 
-const randomPin = () => String(crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000).padStart(6, '0');
-
-/** Alta de trabajadores, NIP y foto de registro. */
+/** Alta de trabajadores y foto de registro en persona. El supervisor solo puede tomar fotos. */
 export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
   const company = me.company!;
+  const isManager = me.role === 'owner' || me.role === 'admin';
+  const [enrolling, setEnrolling] = useState<EmployeeRow | null>(null);
   const [trackBreaks, setTrackBreaks] = useState(company.track_breaks);
 
   async function toggleBreaks(value: boolean) {
@@ -46,7 +46,7 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
   const load = useCallback(async () => {
     const { data, error: err } = await supabase
       .from('employees')
-      .select('id, employee_number, full_name, position, phone, active, consent_confirmed_at, default_site_id, employee_faces(employee_id)')
+      .select('id, employee_number, full_name, position, phone, active, consent_confirmed_at, default_site_id, face_enrolled_at')
       .eq('company_id', company.id)
       .order('employee_number');
     if (err) setError('No se pudo cargar el personal.');
@@ -57,18 +57,8 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
     void load();
   }, [load]);
 
-  async function resetPin(e: EmployeeRow) {
-    const pin = randomPin();
-    try {
-      await api(`/api/admin/employees/${e.id}/pin`, { body: { pin } });
-      setCreds({ name: e.full_name, phone: e.phone, code: company.code, number: e.employee_number, pin });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo reiniciar el NIP.');
-    }
-  }
-
   async function resetFace(e: EmployeeRow) {
-    if (!confirm(`¿Borrar la foto de registro de ${e.full_name}? Tendrá que tomarla de nuevo la próxima vez que entre.`)) return;
+    if (!confirm(`¿Borrar la foto de registro de ${e.full_name}? No podrá checar hasta que un supervisor le tome una nueva.`)) return;
     try {
       await api(`/api/admin/employees/${e.id}/face`, { method: 'DELETE' });
       await load();
@@ -88,11 +78,14 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
             {active} de {company.employee_limit} trabajadores activos en tu plan. Código de empresa para entrar: <strong>{company.code}</strong>
           </p>
         </div>
-        <button className="btn solid" onClick={() => setShowForm(true)} disabled={active >= company.employee_limit}>
-          Agregar trabajador
-        </button>
+        {isManager && (
+          <button className="btn solid" onClick={() => setShowForm(true)} disabled={active >= company.employee_limit}>
+            Agregar trabajador
+          </button>
+        )}
       </div>
 
+      {isManager && (
       <label className="check">
         <input type="checkbox" checked={trackBreaks} onChange={(e) => void toggleBreaks(e.target.checked)} disabled={me.role !== 'owner'} />
         <span>
@@ -102,9 +95,20 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
           </span>
         </span>
       </label>
+      )}
 
       {error && <div className="notice error">{error}</div>}
       {creds && <CredentialCard creds={creds} onClose={() => setCreds(null)} />}
+      {enrolling && (
+        <EnrollFace
+          employee={enrolling}
+          onClose={() => setEnrolling(null)}
+          onEnrolled={() => {
+            setEnrolling(null);
+            void load();
+          }}
+        />
+      )}
       {showForm && (
         <NewEmployee
           me={me}
@@ -143,15 +147,25 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
                     {e.position && <div className="muted" style={{ fontSize: '0.85rem' }}>{e.position}</div>}
                   </td>
                   <td>{me.sites?.find((s) => s.id === e.default_site_id)?.name ?? 'La más cercana'}</td>
-                  <td>{e.employee_faces ? <span className="chip go">Registrada</span> : <span className="chip warn">Pendiente</span>}</td>
+                  <td>{e.face_enrolled_at ? <span className="chip go">Registrada</span> : <span className="chip warn">Pendiente</span>}</td>
                   <td>{e.consent_confirmed_at ? <span className="chip go">Confirmado</span> : <span className="chip stop">Falta</span>}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    <button className="btn small quiet" onClick={() => void resetPin(e)}>
-                      Nuevo NIP
-                    </button>
-                    {e.employee_faces && (
+                    {!e.face_enrolled_at && e.active && (
+                      <button className="btn small" onClick={() => setEnrolling(e)}>
+                        Tomar foto
+                      </button>
+                    )}
+                    {e.face_enrolled_at && isManager && (
                       <button className="btn small quiet" onClick={() => void resetFace(e)}>
                         Repetir foto
+                      </button>
+                    )}
+                    {isManager && (
+                      <button
+                        className="btn small quiet"
+                        onClick={() => setCreds({ name: e.full_name, phone: e.phone, code: company.code, number: e.employee_number })}
+                      >
+                        Enviar acceso
                       </button>
                     )}
                   </td>
@@ -179,7 +193,6 @@ function NewEmployee({ me, onClose, onCreated }: { me: Me; onClose: () => void; 
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const pin = randomPin();
     try {
       await api('/api/admin/employees', {
         body: {
@@ -189,11 +202,10 @@ function NewEmployee({ me, onClose, onCreated }: { me: Me; onClose: () => void; 
           position,
           phone,
           default_site_id: site || null,
-          pin,
           consent_confirmed: consent,
         },
       });
-      onCreated({ name, phone: phone || null, code: me.company!.code, number, pin });
+      onCreated({ name, phone: phone || null, code: me.company!.code, number });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo dar de alta.');
     } finally {
@@ -257,7 +269,7 @@ function CredentialCard({ creds, onClose }: { creds: Credentials; onClose: () =>
   const url = window.location.origin;
   const message =
     `Hola ${creds.name.split(' ')[0]}, este es tu acceso a Jornadia para checar tu entrada y salida:\n` +
-    `${url}\n\nCódigo de empresa: ${creds.code}\nNúmero de empleado: ${creds.number}\nNIP: ${creds.pin}\n\n` +
+    `${url}\n\nCódigo de empresa: ${creds.code}\nNúmero de empleado: ${creds.number}\n\n` +
     `Ábrelo en Chrome y elige "Agregar a pantalla principal" para tenerlo como app.`;
   const phone = creds.phone?.replace(/\D/g, '');
   const wa = phone ? `https://wa.me/${phone.length === 10 ? `52${phone}` : phone}?text=${encodeURIComponent(message)}` : null;
@@ -266,8 +278,8 @@ function CredentialCard({ creds, onClose }: { creds: Credentials; onClose: () =>
     <div className="notice ok" role="status">
       <strong>Acceso de {creds.name}</strong>
       <p style={{ color: 'var(--ink)', margin: '6px 0 10px' }}>
-        Código de empresa <b>{creds.code}</b>, número <b>{creds.number}</b>, NIP <b style={{ letterSpacing: '0.15em' }}>{creds.pin}</b>. Este NIP
-        no se volverá a mostrar.
+        Código de empresa <b>{creds.code}</b> y número <b>{creds.number}</b>. Antes de su primera checada, tómale la foto de registro con
+        el botón Tomar foto.
       </p>
       <div className="toolbar">
         {wa && (

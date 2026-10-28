@@ -19,6 +19,11 @@ files.get('/', async (c) => {
     throw new HTTPException(400, { message: 'Ruta inválida.' });
   }
 
+  // Solo supervisores y administradores ven fotos (un trabajador no puede ver las de nadie)
+  const company = path.split('/')[1];
+  const role = auth.memberships.find((m) => m.company_id === company)?.role;
+  if (!auth.isPlatformAdmin && (!role || role === 'worker')) throw new HTTPException(403, { message: 'No tienes permiso para ver esta foto.' });
+
   const db = userClient(c.env, auth.accessToken);
   const allowed = path.startsWith('selfies/')
     ? await db.from('punches').select('id').eq('selfie_path', path).limit(1).maybeSingle()

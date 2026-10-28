@@ -18,10 +18,12 @@ interface Props {
   reference: number[] | null;
   onDone: (result: CheckResult) => void;
   onCancel: () => void;
+  /** 'environment' = cámara trasera, para que el supervisor fotografíe al trabajador */
+  facing?: 'user' | 'environment';
 }
 
 /** Pantalla completa de cámara con el reto de parpadeo. */
-export function Capture({ title, reference, onDone, onCancel }: Props) {
+export function Capture({ title, reference, onDone, onCancel, facing = 'user' }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [step, setStep] = useState<CheckStep>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export function Capture({ title, reference, onDone, onCancel }: Props) {
     setStep('loading');
     (async () => {
       try {
-        stream = await openCamera(videoRef.current!);
+        stream = await openCamera(videoRef.current!, facing);
         const result = await runFaceCheck(videoRef.current!, { reference, onStep: setStep, signal: controller.signal });
         if (!controller.signal.aborted) onDone(result);
       } catch (err) {
@@ -63,7 +65,13 @@ export function Capture({ title, reference, onDone, onCancel }: Props) {
       </header>
 
       <div className="viewfinder" data-step={step}>
-        <video ref={videoRef} playsInline muted aria-label="Vista de la cámara frontal" />
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          aria-label={facing === 'user' ? 'Vista de la cámara frontal' : 'Vista de la cámara trasera'}
+          style={facing === 'environment' ? { transform: 'none' } : undefined}
+        />
       </div>
 
       {error ? (
@@ -88,7 +96,9 @@ export function Capture({ title, reference, onDone, onCancel }: Props) {
           <p className="hint">
             {step === 'loading'
               ? 'La primera vez puede tardar unos segundos en preparar la verificación.'
-              : 'Busca luz de frente. Quítate gorra y lentes oscuros.'}
+              : facing === 'environment'
+                ? 'Apunta al rostro del trabajador, con luz de frente y sin gorra ni lentes oscuros.'
+                : 'Busca luz de frente. Quítate gorra y lentes oscuros.'}
           </p>
         </>
       )}

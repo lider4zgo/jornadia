@@ -170,14 +170,14 @@ export async function runFaceCheck(
   throw new DOMException('Cancelado', 'AbortError');
 }
 
-/** Abre la cámara frontal. */
-export async function openCamera(video: HTMLVideoElement): Promise<MediaStream> {
+/** Abre la cámara frontal (selfie) o la trasera (foto de registro tomada por el supervisor). */
+export async function openCamera(video: HTMLVideoElement, facing: 'user' | 'environment' = 'user'): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('Este navegador no permite usar la cámara. Abre Jornadia en Chrome.');
   }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+      video: { facingMode: { ideal: facing }, width: { ideal: 640 }, height: { ideal: 480 } },
       audio: false,
     });
     video.srcObject = stream;
@@ -188,7 +188,7 @@ export async function openCamera(video: HTMLVideoElement): Promise<MediaStream> 
   } catch (err) {
     const name = (err as DOMException)?.name;
     if (name === 'NotAllowedError') throw new Error('Permite el acceso a la cámara en tu navegador para poder checar.');
-    if (name === 'NotFoundError') throw new Error('No encontramos una cámara frontal en este teléfono.');
+    if (name === 'NotFoundError') throw new Error('No encontramos una cámara en este teléfono.');
     throw new Error('No se pudo abrir la cámara. Cierra otras apps que la estén usando.');
   }
 }

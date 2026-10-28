@@ -7,8 +7,8 @@ Es una aplicación web responsiva e instalable (PWA): no requiere tienda de apps
 ## Qué incluye esta versión (piloto)
 
 **Trabajador** (celular)
-- Inicio de sesión con código de empresa + número de empleado + NIP de 6 dígitos.
-- Foto de registro en el primer uso.
+- Inicio de sesión con código de empresa + número de empleado, sin contraseña: la app muestra la empresa y el nombre para que la persona confirme que es ella.
+- La foto de registro la toma un supervisor o administrador en persona; sin ella no se puede entrar.
 - Checada de entrada, comida y salida: selfie, parpadeo (prueba de vida), comparación facial en el teléfono y GPS.
 - Sin señal: la checada se guarda en el teléfono con su hora y ubicación y se envía sola al volver la conexión.
 - Historial y avance de la semana contra el tope legal (46 h en 2027).
@@ -16,7 +16,7 @@ Es una aplicación web responsiva e instalable (PWA): no requiere tienda de apps
 **Empresa cliente** (dueño, administrador, supervisor)
 - *Hoy*: quién checó, dónde, a qué distancia de la obra, selfie y observaciones por revisar.
 - *Reporte*: horas trabajadas y extra por trabajador y periodo; descarga para Excel.
-- *Personal*: alta de trabajadores con NIP automático y envío del acceso por WhatsApp.
+- *Personal*: alta de trabajadores, foto de registro en persona (cámara trasera o frontal) y envío del acceso por WhatsApp.
 - *Obras*: geocercas creadas desde la ubicación actual o con coordenadas de Google Maps.
 - Correcciones con motivo obligatorio: el registro original nunca se modifica.
 - El supervisor solo ve *Hoy* y *Reporte* de sus obras.
@@ -30,7 +30,8 @@ Es una aplicación web responsiva e instalable (PWA): no requiere tienda de apps
 - Cada checada guarda el hash de la anterior; `verify_punch_chain(empresa)` detecta cualquier alteración.
 - La hora oficial es la del servidor. Las checadas sin conexión usan la hora del teléfono corregida con la última sincronización y quedan marcadas para revisión.
 - Seguridad por fila (RLS): cada empresa solo ve sus datos; cada rol, solo lo que le corresponde.
-- Las fotos se sirven únicamente a quien puede ver el registro al que pertenecen.
+- Las fotos solo las ven supervisores y administradores con acceso al registro; un trabajador no puede ver ninguna.
+- Los administradores pueden restablecer su contraseña desde la pantalla de inicio de sesión.
 
 ## Estructura
 
@@ -45,7 +46,7 @@ supabase/       Esquema de base de datos y pruebas
 
 ### 1. Supabase (proyecto `jornadia`)
 
-1. **SQL Editor** → pega y ejecuta `supabase/migrations/20261027000001_esquema_inicial.sql`.
+1. **SQL Editor** → pega y ejecuta, en orden, los archivos de `supabase/migrations/`.
 2. **Authentication → Sign In / Providers**: desactiva *Allow new users to sign up*. Las cuentas solo las crea la plataforma.
 3. **Authentication → Users → Add user**: crea tu usuario con tu correo y contraseña (marca *Auto Confirm User*).
 4. **SQL Editor** → ejecuta `supabase/seed_superadmin.sql` con tu correo.
@@ -68,7 +69,8 @@ La app queda en `https://jornadia.<tu-cuenta>.workers.dev`. Cuando compres `jorn
 
 1. Entra con tu correo en la pestaña *Administración* y crea la empresa del piloto (por ejemplo, código `elaguna`).
 2. Entrega al dueño su correo y contraseña. Él (o tú, con su usuario) da de alta obras y trabajadores.
-3. Cada trabajador recibe por WhatsApp su enlace, código, número y NIP; en el primer uso registra su foto.
+3. Un supervisor o administrador toma la foto de registro de cada trabajador en *Personal → Tomar foto*.
+4. Cada trabajador recibe por WhatsApp su enlace, código de empresa y número.
 
 ## Desarrollo local
 

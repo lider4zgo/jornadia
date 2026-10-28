@@ -7,7 +7,6 @@ import { isConfigured, openedFromRecoveryLink, supabase } from './lib/supabase';
 import { Mark, Spinner, WhatsAppLink } from './common';
 import { Login } from './screens/Login';
 import { SetPassword } from './screens/SetPassword';
-import { Enroll } from './screens/Enroll';
 import { Checar } from './screens/Checar';
 import { History } from './screens/History';
 import { Panel } from './admin/Panel';
@@ -141,7 +140,19 @@ function Body({ me, isManager, reload }: { me: Me; isManager: boolean; reload: (
       </div>
     );
   }
-  if (!me.face) return <Enroll me={me} onEnrolled={() => void reload()} />;
+  if (!me.face) {
+    return (
+      <div className="content">
+        <div className="notice warn">
+          <strong>Falta tu foto de registro</strong>
+          Pide a tu supervisor que te tome la foto desde su celular. Después podrás checar desde aquí.
+        </div>
+        <button className="btn block" onClick={() => void reload()}>
+          Ya me la tomaron
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>

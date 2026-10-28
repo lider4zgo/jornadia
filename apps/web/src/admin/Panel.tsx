@@ -9,9 +9,9 @@ type Tab = 'today' | 'report' | 'people' | 'sites';
 
 const LABELS: Record<Tab, string> = { today: 'Hoy', report: 'Reporte', people: 'Personal', sites: 'Obras' };
 
-/** Panel del cliente. El supervisor solo ve Hoy y Reporte (de sus obras). */
+/** Panel del cliente. El supervisor ve Hoy, Reporte (de sus obras) y Personal (solo para tomar fotos de registro). */
 export function Panel({ me, onChanged }: { me: Me; onChanged: () => void }) {
-  const tabs: Tab[] = me.role === 'supervisor' ? ['today', 'report'] : ['today', 'report', 'people', 'sites'];
+  const tabs: Tab[] = me.role === 'supervisor' ? ['today', 'report', 'people'] : ['today', 'report', 'people', 'sites'];
   const [tab, setTab] = useState<Tab>('today');
 
   return (

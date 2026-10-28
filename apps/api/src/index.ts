@@ -7,6 +7,7 @@ import { punches } from './routes/punches';
 import { reports } from './routes/reports';
 import { files } from './routes/files';
 import { adminRoutes } from './routes/admin';
+import { workerAuth } from './routes/worker-auth';
 
 const app = new Hono<AppEnv>();
 
@@ -17,6 +18,7 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.get('/api/health', (c) => c.json({ ok: true, serverTime: new Date().toISOString() }));
+app.route('/api/auth/worker', workerAuth);
 app.route('/api/me', me);
 app.route('/api/punches', punches);
 app.route('/api/reports', reports);

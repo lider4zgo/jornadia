@@ -8,8 +8,12 @@ export const adminRoutes = new Hono<AppEnv>();
 adminRoutes.use('*', requireAuth);
 
 const CODE_RE = /^[a-z0-9]{3,16}$/;
-const PIN_RE = /^\d{6}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const randomSecret = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return btoa(String.fromCharCode(...bytes)).replace(/[^A-Za-z0-9]/g, '') + 'Aa1!';
+};
 
 const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
@@ -72,7 +76,7 @@ adminRoutes.post('/companies', async (c) => {
  * Dueño o admin: da de alta a una persona.
  *  - role 'worker' (por defecto): cuenta con número de empleado + NIP de 6 dígitos.
  *  - role 'supervisor' | 'admin': cuenta con correo y contraseña (admin solo lo crea el dueño).
- * POST /api/admin/employees { company_id, employee_number, full_name, role?, pin?, email?, password?,
+ * POST /api/admin/employees { company_id, employee_number, full_name, role?, email?, password?,
  *                             phone?, position?, default_site_id?, site_ids?, consent_confirmed? }
  */
 adminRoutes.post('/employees', async (c) => {
@@ -104,8 +108,9 @@ adminRoutes.post('/employees', async (c) => {
   let email: string;
   let password: string;
   if (isWorker) {
-    password = typeof b.pin === 'string' ? b.pin : '';
-    if (!PIN_RE.test(password)) throw new HTTPException(400, { message: 'El NIP debe tener 6 dígitos.' });
+    // El trabajador no usa contraseña: entra con código + número y lo protege la selfie.
+    // La cuenta lleva una contraseña aleatoria que nadie conoce.
+    password = randomSecret();
     email = workerEmail(employeeNumber, company.code, c.env.WORKER_EMAIL_DOMAIN);
   } else {
     email = str(b.email).toLowerCase();
@@ -175,22 +180,7 @@ adminRoutes.post('/employees', async (c) => {
   return c.json({ employee, role, login: isWorker ? { company_code: company.code, employee_number: employeeNumber } : { email } }, 201);
 });
 
-/** Dueño o admin: reinicia el NIP de un trabajador. POST /api/admin/employees/:id/pin { pin } */
-adminRoutes.post('/employees/:id/pin', async (c) => {
-  const auth = c.get('auth');
-  const admin = adminClient(c.env);
-  const { data: employee } = await admin.from('employees').select('id, company_id, user_id').eq('id', c.req.param('id')).single();
-  if (!employee?.user_id) throw new HTTPException(404, { message: 'Trabajador no encontrado.' });
-  requireRole(auth, employee.company_id, ['owner', 'admin']);
-  const { pin } = await c.req.json<{ pin?: string }>();
-  if (!pin || !PIN_RE.test(pin)) throw new HTTPException(400, { message: 'El NIP debe tener 6 dígitos.' });
-  const { error } = await admin.auth.admin.updateUserById(employee.user_id, { password: pin });
-  if (error) throw new HTTPException(500, { message: 'No se pudo cambiar el NIP.' });
-  await admin.from('audit_log').insert({ company_id: employee.company_id, actor_id: auth.userId, action: 'member.pin_reset', entity: 'employees', entity_id: employee.id });
-  return c.json({ ok: true });
-});
-
-/** Dueño o admin: borra la foto de referencia para que el trabajador la vuelva a registrar. */
+/** Dueño o admin: borra la foto de registro para tomarla de nuevo. */
 adminRoutes.delete('/employees/:id/face', async (c) => {
   const auth = c.get('auth');
   const admin = adminClient(c.env);
@@ -198,7 +188,85 @@ adminRoutes.delete('/employees/:id/face', async (c) => {
   if (!face) throw new HTTPException(404, { message: 'El trabajador no tiene foto registrada.' });
   requireRole(auth, face.company_id, ['owner', 'admin']);
   await admin.from('employee_faces').delete().eq('employee_id', face.employee_id);
+  await admin.from('employees').update({ face_enrolled_at: null }).eq('id', face.employee_id);
   await c.env.FILES.delete(face.photo_path);
   await admin.from('audit_log').insert({ company_id: face.company_id, actor_id: auth.userId, action: 'face.reset', entity: 'employee_faces', entity_id: face.employee_id });
   return c.json({ ok: true });
+});
+
+/**
+ * Foto de registro tomada EN PERSONA por un supervisor o administrador, desde su
+ * propio celular y frente al trabajador. Cuerpo multipart:
+ *   data  → { descriptor: number[], model_version, liveness_passed }
+ *   photo → imagen JPEG/WebP (≤ 400 KB)
+ */
+adminRoutes.post('/employees/:id/face', async (c) => {
+  const auth = c.get('auth');
+  const admin = adminClient(c.env);
+  const { data: employee } = await admin
+    .from('employees')
+    .select('id, company_id, full_name, active, face_enrolled_at')
+    .eq('id', c.req.param('id'))
+    .maybeSingle();
+  if (!employee) throw new HTTPException(404, { message: 'Trabajador no encontrado.' });
+  requireRole(auth, employee.company_id, ['owner', 'admin', 'supervisor']);
+  if (!employee.active) throw new HTTPException(400, { message: 'El trabajador está dado de baja.' });
+  if (employee.face_enrolled_at) {
+    throw new HTTPException(409, { message: 'Este trabajador ya tiene foto de registro. Un administrador debe borrarla antes de tomar otra.' });
+  }
+
+  const body = await c.req.parseBody();
+  let data: { descriptor?: unknown; model_version?: unknown; liveness_passed?: unknown };
+  try {
+    data = JSON.parse(String(body.data ?? ''));
+  } catch {
+    throw new HTTPException(400, { message: 'Datos inválidos.' });
+  }
+  const descriptor = data.descriptor;
+  if (
+    !Array.isArray(descriptor) ||
+    descriptor.length < 64 ||
+    descriptor.length > 2048 ||
+    !descriptor.every((v) => typeof v === 'number' && Number.isFinite(v))
+  ) {
+    throw new HTTPException(400, { message: 'No se pudo leer el rostro. Toma la foto de nuevo.' });
+  }
+  if (data.liveness_passed !== true) {
+    throw new HTTPException(422, { message: 'No se confirmó que la persona esté frente a la cámara. Toma la foto de nuevo con buena luz.' });
+  }
+  const photo = body.photo;
+  if (!(photo instanceof File) || !['image/jpeg', 'image/webp'].includes(photo.type) || photo.size > 400 * 1024) {
+    throw new HTTPException(400, { message: 'Foto inválida.' });
+  }
+
+  const photoPath = `faces/${employee.company_id}/${employee.id}/${Date.now()}.jpg`;
+  await c.env.FILES.put(photoPath, await photo.arrayBuffer(), { httpMetadata: { contentType: photo.type } });
+
+  const now = new Date().toISOString();
+  const { error } = await admin.from('employee_faces').insert({
+    employee_id: employee.id,
+    company_id: employee.company_id,
+    descriptor,
+    photo_path: photoPath,
+    model_version: String(data.model_version ?? 'unknown').slice(0, 64),
+    enrolled_at: now,
+    enrolled_by: auth.userId,
+    approved_at: now,
+    approved_by: auth.userId,
+  });
+  if (error) {
+    await c.env.FILES.delete(photoPath);
+    throw new HTTPException(error.code === '23505' ? 409 : 500, {
+      message: error.code === '23505' ? 'Este trabajador ya tiene foto de registro.' : 'No se pudo guardar la foto. Intenta de nuevo.',
+    });
+  }
+  await admin.from('employees').update({ face_enrolled_at: now }).eq('id', employee.id);
+  await admin.from('audit_log').insert({
+    company_id: employee.company_id,
+    actor_id: auth.userId,
+    action: 'face.enrolled_in_person',
+    entity: 'employee_faces',
+    entity_id: employee.id,
+  });
+  return c.json({ ok: true, enrolled_at: now }, 201);
 });
