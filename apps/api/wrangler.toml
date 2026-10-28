@@ -16,8 +16,8 @@ binding = "FILES"
 bucket_name = "jornadia-files"
 
 [vars]
-# Reemplaza con la URL de tu proyecto "jornadia" en Supabase (Project Settings → API)
-SUPABASE_URL = "https://TU-PROYECTO.supabase.co"
+# URL del proyecto "jornadia" en Supabase (Project Settings → Data API)
+SUPABASE_URL = "https://zjkjpdnydxaumjxqlcjj.supabase.co"
 # Dominio ficticio para las cuentas de trabajadores (no se envían correos)
 WORKER_EMAIL_DOMAIN = "trabajadores.jornadia.mx"
 
