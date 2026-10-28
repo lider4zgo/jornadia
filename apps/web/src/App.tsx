@@ -3,9 +3,10 @@ import type { Session } from '@supabase/supabase-js';
 import { api, ApiError, NetworkError, setActiveCompany } from './lib/api';
 import { syncClock } from './lib/clock';
 import { listQueue, startAutoSync } from './lib/queue';
-import { isConfigured, supabase } from './lib/supabase';
+import { isConfigured, openedFromRecoveryLink, supabase } from './lib/supabase';
 import { Mark, Spinner, WhatsAppLink } from './common';
 import { Login } from './screens/Login';
+import { SetPassword } from './screens/SetPassword';
 import { Enroll } from './screens/Enroll';
 import { Checar } from './screens/Checar';
 import { History } from './screens/History';
@@ -19,10 +20,14 @@ export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [me, setMe] = useState<Me | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [recovering, setRecovering] = useState(openedFromRecoveryLink);
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    const { data } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
+      setSession(s);
+    });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -77,6 +82,7 @@ export function App() {
     );
   }
   if (session === undefined) return <Spinner label="Abriendo Jornadia…" />;
+  if (recovering && session) return <SetPassword onDone={() => setRecovering(false)} />;
   if (!session) return <Login />;
   if (loadError) {
     return (
