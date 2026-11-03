@@ -10,7 +10,7 @@ export const openedFromRecoveryLink =
   typeof window !== 'undefined' && /type=recovery/.test(window.location.hash + window.location.search);
 
 export const supabase = createClient(url ?? 'http://localhost', anonKey ?? 'missing', {
-  auth: { persistSession: true, autoRefreshToken: true, storageKey: 'jornadia-session' },
+  auth: { persistSession: true, autoRefreshToken: true, storageKey: 'korporia-session' },
 });
 
 export async function accessToken(): Promise<string | null> {

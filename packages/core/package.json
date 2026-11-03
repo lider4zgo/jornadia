@@ -1,11 +1,12 @@
 {
-  "name": "@jornadia/core",
+  "name": "@korporia/core",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Reglas de negocio compartidas: geocercas, secuencia de checadas y cálculo de jornada LFT",
+  "description": "Núcleo de Korporia: módulos, permisos, roles e identidad, compartidos por la app y la API",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./permissions.json": "./src/permissions.json"
   },
   "scripts": {
     "build": "tsc --noEmit -p .",

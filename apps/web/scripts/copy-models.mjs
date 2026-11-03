@@ -1,4 +1,4 @@
-// Copia a public/models solo los modelos de rostro que usa Jornadia,
+// Copia a public/models solo los modelos de rostro que usa Korporia Jornada,
 // para servirlos desde nuestro dominio y tenerlos disponibles sin conexión.
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';

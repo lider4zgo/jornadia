@@ -7,18 +7,22 @@ export interface Env {
   WORKER_EMAIL_DOMAIN: string;
 }
 
-export type Role = 'owner' | 'admin' | 'supervisor' | 'worker';
+export type CompanyStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'archived';
 
-export interface Membership {
-  id: string;
-  company_id: string;
-  role: Role;
+/** Acceso del usuario a una empresa: rol, permisos y módulos contratados. */
+export interface CompanyAccess {
+  membershipId: string;
+  companyId: string;
+  role: string;
+  permissions: Set<string>;
+  modules: Set<string>;
+  status: CompanyStatus | null;
 }
 
 export interface AuthContext {
   userId: string;
   accessToken: string;
-  memberships: Membership[];
+  access: CompanyAccess[];
   isPlatformAdmin: boolean;
 }
 

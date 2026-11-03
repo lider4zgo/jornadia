@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Jornadia — Registro de jornada',
-        short_name: 'Jornadia',
-        description: 'Checa tu entrada y salida con selfie y ubicación.',
+        name: 'Korporia — RH y finanzas para PyMEs',
+        short_name: 'Korporia',
+        description: 'Recursos humanos y finanzas de tu empresa. Checa tu entrada y salida con selfie y ubicación.',
         lang: 'es-MX',
         theme_color: '#12305A',
         background_color: '#F5F7FA',

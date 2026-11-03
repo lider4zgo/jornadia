@@ -1,6 +1,6 @@
 // Hora estimada del servidor. El reloj del teléfono puede estar mal o haber
 // sido cambiado; guardamos la diferencia medida en la última conexión.
-const KEY = 'jornadia-clock-offset';
+const KEY = 'korporia-clock-offset';
 
 let offsetMs = Number(localStorage.getItem(KEY) ?? 0) || 0;
 

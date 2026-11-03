@@ -1,0 +1,69 @@
+{
+  "modules": [
+    { "key": "core", "name": "Núcleo", "billable": false },
+    { "key": "jornada", "name": "Jornada", "billable": true },
+    { "key": "nomina", "name": "Nómina", "billable": true },
+    { "key": "finanzas", "name": "Finanzas", "billable": true },
+    { "key": "reclutamiento", "name": "Reclutamiento", "billable": true }
+  ],
+  "permissions": [
+    { "key": "core.empresa.editar", "label": "Editar los datos de la empresa" },
+    { "key": "core.empresa.suscripcion", "label": "Ver y cambiar el plan y los módulos contratados" },
+    { "key": "core.usuarios.gestionar", "label": "Dar de alta usuarios y asignar roles" },
+    { "key": "core.personal.ver", "label": "Ver colaboradores" },
+    { "key": "core.personal.gestionar", "label": "Dar de alta, editar y dar de baja colaboradores" },
+    { "key": "core.sitios.gestionar", "label": "Crear y editar obras y sucursales" },
+    { "key": "core.bitacora.ver", "label": "Consultar la bitácora de cambios" },
+    { "key": "jornada.checar", "label": "Registrar mi entrada y salida" },
+    { "key": "jornada.asistencia.ver", "label": "Ver la asistencia de toda la empresa" },
+    { "key": "jornada.asistencia.ver_asignadas", "label": "Ver la asistencia solo de las obras asignadas" },
+    { "key": "jornada.reportes.ver", "label": "Ver y descargar reportes de jornada" },
+    { "key": "jornada.correcciones.crear", "label": "Corregir checadas con motivo" },
+    { "key": "jornada.rostros.registrar", "label": "Tomar la foto de registro en persona" },
+    { "key": "jornada.rostros.restablecer", "label": "Borrar una foto de registro para tomarla de nuevo" },
+    { "key": "jornada.configurar", "label": "Cambiar los ajustes del módulo Jornada" },
+    { "key": "jornada.cadena.verificar", "label": "Verificar la integridad de los registros" }
+  ],
+  "systemRoles": [
+    {
+      "key": "owner",
+      "name": "Dueño",
+      "description": "Control total de la empresa, incluido el plan contratado",
+      "permissions": "*"
+    },
+    {
+      "key": "admin",
+      "name": "Administrador",
+      "description": "Administra personal, obras y módulos; no cambia el plan",
+      "permissions": [
+        "core.empresa.editar",
+        "core.usuarios.gestionar",
+        "core.personal.ver",
+        "core.personal.gestionar",
+        "core.sitios.gestionar",
+        "core.bitacora.ver",
+        "jornada.checar",
+        "jornada.asistencia.ver",
+        "jornada.asistencia.ver_asignadas",
+        "jornada.reportes.ver",
+        "jornada.correcciones.crear",
+        "jornada.rostros.registrar",
+        "jornada.rostros.restablecer",
+        "jornada.configurar",
+        "jornada.cadena.verificar"
+      ]
+    },
+    {
+      "key": "supervisor",
+      "name": "Supervisor",
+      "description": "Ve la asistencia de sus obras y toma fotos de registro",
+      "permissions": ["core.personal.ver", "jornada.asistencia.ver_asignadas", "jornada.reportes.ver", "jornada.rostros.registrar"]
+    },
+    {
+      "key": "worker",
+      "name": "Colaborador",
+      "description": "Registra su propia jornada",
+      "permissions": ["jornada.checar"]
+    }
+  ]
+}
