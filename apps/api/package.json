@@ -1,18 +1,20 @@
 {
-  "name": "@jornadia/api",
+  "name": "@korporia/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "npm run build -w @jornadia/web && wrangler deploy",
+    "deploy": "npm run build -w @korporia/web && wrangler deploy",
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run"
   },
   "dependencies": {
-    "@jornadia/core": "*",
+    "@korporia/core": "*",
+    "@korporia/jornada": "*",
     "@supabase/supabase-js": "^2.45.0",
-    "hono": "^4.6.0"
+    "hono": "^4.6.0",
+    "jose": "^5.9.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251001.0",
