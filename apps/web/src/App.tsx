@@ -1,20 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { api, ApiError, NetworkError, setActiveCompany } from './lib/api';
+import { canEnterModule } from './lib/access';
 import { syncClock } from './lib/clock';
-import { listQueue, startAutoSync } from './lib/queue';
+import { navigate, splitPath, usePath } from './lib/router';
 import { isConfigured, openedFromRecoveryLink, supabase } from './lib/supabase';
 import { Mark, Spinner, WhatsAppLink } from './common';
-import { Login } from './screens/Login';
-import { SetPassword } from './screens/SetPassword';
-import { Checar } from './screens/Checar';
-import { History } from './screens/History';
-import { Panel } from './admin/Panel';
-import { CreateCompany } from './admin/CreateCompany';
+import { Login } from './core/Login';
+import { SetPassword } from './core/SetPassword';
+import { CreateCompany } from './core/CreateCompany';
+import { WEB_MODULES } from './modules';
+import { listQueue } from './modules/jornada/lib/queue';
 import type { Me } from './types';
 
-const meCacheKey = (userId: string) => `jornadia-me-${userId}`;
+const meCacheKey = (userId: string) => `korporia-me-${userId}`;
 
+/** Shell de Korporia: sesión, empresa activa y navegación entre módulos. */
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [me, setMe] = useState<Me | null>(null);
@@ -34,7 +35,7 @@ export function App() {
     if (!session) return;
     const started = Date.now();
     try {
-      const data = await api<Me>('/api/me');
+      const data = await api<Me>('/api/core/me');
       syncClock(data.serverTime, started);
       setActiveCompany(data.company?.id ?? null);
       localStorage.setItem(meCacheKey(session.user.id), JSON.stringify(data));
@@ -58,11 +59,6 @@ export function App() {
     if (session) void loadMe();
   }, [session, loadMe]);
 
-  useEffect(() => {
-    if (!session) return;
-    return startAutoSync(() => void loadMe());
-  }, [session, loadMe]);
-
   async function signOut() {
     const pending = (await listQueue()).filter((q) => !q.rejected).length;
     if (pending && !confirm(`Tienes ${pending} checada(s) sin enviar. Si cierras sesión podrían perderse. ¿Salir de todos modos?`)) return;
@@ -74,13 +70,13 @@ export function App() {
     return (
       <div className="shell">
         <div className="content" style={{ paddingTop: 32 }}>
-          <h1>Falta configurar Jornadia</h1>
+          <h1>Falta configurar Korporia</h1>
           <p>Crea el archivo apps/web/.env.local con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (ver .env.example).</p>
         </div>
       </div>
     );
   }
-  if (session === undefined) return <Spinner label="Abriendo Jornadia…" />;
+  if (session === undefined) return <Spinner label="Abriendo Korporia…" />;
   if (recovering && session) return <SetPassword onDone={() => setRecovering(false)} />;
   if (!session) return <Login />;
   if (loadError) {
@@ -100,30 +96,52 @@ export function App() {
   }
   if (!me) return <Spinner label="Cargando tu información…" />;
 
-  const isManager = me.role === 'owner' || me.role === 'admin' || me.role === 'supervisor';
-  const wide = isManager || (me.isPlatformAdmin && !me.company);
+  return <Shell me={me} email={session.user.email} reload={loadMe} signOut={signOut} />;
+}
+
+function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload: () => Promise<void>; signOut: () => Promise<void> }) {
+  const path = usePath();
+  const [moduleKey, section] = splitPath(path);
+  const available = WEB_MODULES.filter((m) => canEnterModule(me, m.key));
+  const current = available.find((m) => m.key === moduleKey) ?? available[0];
+
+  // Ruta sin módulo o de un módulo no disponible: ir al primero que el usuario puede usar
+  useEffect(() => {
+    if (current && current.key !== moduleKey) navigate(`/${current.key}`, { replace: true });
+  }, [current, moduleKey]);
+
+  // El colaborador (sin permisos de gestión) usa la vista angosta de celular
+  const manages = me.permissions.some((p) => p !== 'jornada.checar');
+  const wide = manages || (me.isPlatformAdmin && !me.company);
 
   return (
     <div className={`shell ${wide ? 'wide' : ''}`}>
       <header className="topbar">
         <Mark />
         <div className="who">
-          <strong>{me.company?.name ?? 'Jornadia'}</strong>
-          <span>{me.employee?.full_name ?? (me.isPlatformAdmin ? 'Administrador de la plataforma' : session.user.email)}</span>
+          <strong>{me.company?.name ?? 'Korporia'}</strong>
+          <span>{me.employee?.full_name ?? (me.isPlatformAdmin ? 'Administrador de la plataforma' : email)}</span>
         </div>
-        <WhatsAppLink number={me.company?.whatsapp_support} text={`Hola, necesito ayuda con Jornadia (${me.company?.name ?? ''}).`} />
+        {available.length > 1 && (
+          <nav className="module-nav" aria-label="Módulos">
+            {available.map((m) => (
+              <button key={m.key} aria-current={m.key === current?.key ? 'page' : undefined} onClick={() => navigate(`/${m.key}`)}>
+                {m.name}
+              </button>
+            ))}
+          </nav>
+        )}
+        <WhatsAppLink number={me.company?.whatsapp_support} text={`Hola, necesito ayuda con Korporia (${me.company?.name ?? ''}).`} />
         <button className="btn quiet" onClick={() => void signOut()}>
           Salir
         </button>
       </header>
-      <Body me={me} isManager={isManager} reload={loadMe} />
+      <Body me={me} current={current?.key} section={current?.key === moduleKey ? section : ''} reload={reload} />
     </div>
   );
 }
 
-function Body({ me, isManager, reload }: { me: Me; isManager: boolean; reload: () => Promise<void> }) {
-  const [tab, setTab] = useState<'checar' | 'historial'>('checar');
-
+function Body({ me, current, section, reload }: { me: Me; current?: string; section: string; reload: () => Promise<void> }) {
   if (me.isPlatformAdmin && !me.company) return <CreateCompany onCreated={() => void reload()} />;
   if (!me.company) {
     return (
@@ -132,39 +150,23 @@ function Body({ me, isManager, reload }: { me: Me; isManager: boolean; reload: (
       </div>
     );
   }
-  if (isManager) return <Panel me={me} onChanged={() => void reload()} />;
-  if (!me.employee) {
+  const module = WEB_MODULES.find((m) => m.key === current);
+  if (!module) {
+    const status = me.company.subscription?.status;
+    const message =
+      status === 'suspended' || status === 'archived'
+        ? 'La cuenta de tu empresa está suspendida. Avisa al dueño de la cuenta para reactivarla.'
+        : 'Tu usuario todavía no tiene acceso a ningún módulo. Pide a tu administrador que te asigne un rol.';
     return (
       <div className="content">
-        <div className="notice warn">Tu usuario no tiene un registro de trabajador. Habla con tu supervisor.</div>
+        <div className="notice warn">{message}</div>
       </div>
     );
   }
-  if (!me.face) {
-    return (
-      <div className="content">
-        <div className="notice warn">
-          <strong>Falta tu foto de registro</strong>
-          Pide a tu supervisor que te tome la foto desde su celular. Después podrás checar desde aquí.
-        </div>
-        <button className="btn block" onClick={() => void reload()}>
-          Ya me la tomaron
-        </button>
-      </div>
-    );
-  }
-
+  const { Component } = module;
   return (
-    <>
-      {tab === 'checar' ? <Checar me={me} onPunched={() => void reload()} /> : <History me={me} />}
-      <nav className="tabbar" aria-label="Navegación">
-        <button aria-current={tab === 'checar' ? 'page' : undefined} onClick={() => setTab('checar')}>
-          Checar
-        </button>
-        <button aria-current={tab === 'historial' ? 'page' : undefined} onClick={() => setTab('historial')}>
-          Mi historial
-        </button>
-      </nav>
-    </>
+    <Suspense fallback={<Spinner label={`Abriendo ${module.name}…`} />}>
+      <Component me={me} section={section} reload={reload} />
+    </Suspense>
   );
 }

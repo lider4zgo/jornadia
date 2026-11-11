@@ -1,5 +1,5 @@
 {
-  "name": "@jornadia/web",
+  "name": "@korporia/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "@jornadia/core": "*",
+    "@korporia/core": "*",
+    "@korporia/jornada": "*",
     "@supabase/supabase-js": "^2.45.0",
     "@vladmandic/human": "^3.3.0",
     "idb-keyval": "^6.2.1",

@@ -1,17 +1,17 @@
 {
-  "name": "jornadia",
+  "name": "korporia",
   "private": true,
   "version": "0.1.0",
-  "description": "Jornadia — registro electrónico de jornada laboral (LFT 2027) para personal en campo",
+  "description": "Korporia — plataforma de RH y finanzas para PyMEs (núcleo + módulos)",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "scripts": {
-    "dev:web": "npm run dev -w @jornadia/web",
-    "dev:api": "npm run dev -w @jornadia/api",
-    "build": "npm run build -w @jornadia/core && npm run build -w @jornadia/web && npm run typecheck -w @jornadia/api",
-    "test": "npm run test -w @jornadia/core && npm run test -w @jornadia/api && npm run test:db",
+    "dev:web": "npm run dev -w @korporia/web",
+    "dev:api": "npm run dev -w @korporia/api",
+    "build": "npm run build -w @korporia/core && npm run build -w @korporia/jornada && npm run build -w @korporia/web && npm run typecheck -w @korporia/api",
+    "test": "npm run test -w @korporia/core && npm run test -w @korporia/jornada && npm run test -w @korporia/api && npm run test:db",
     "test:db": "node supabase/tests/run.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

@@ -1,9 +1,15 @@
 # Un solo Worker sirve la app web (archivos estáticos) y la API (/api/*).
 # Misma dirección para ambos: sin problemas de CORS y un solo despliegue.
-name = "jornadia"
+name = "korporia"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
 compatibility_flags = ["nodejs_compat"]
+
+# Dominio propio de la app. La zona korporia.com está en esta misma cuenta de
+# Cloudflare; al desplegar se crea el registro DNS y el certificado.
+routes = [
+  { pattern = "app.korporia.com", custom_domain = true }
+]
 
 [assets]
 directory = "../web/dist"
@@ -13,13 +19,13 @@ run_worker_first = ["/api/*"]
 
 [[r2_buckets]]
 binding = "FILES"
-bucket_name = "jornadia-files"
+bucket_name = "korporia-files"
 
 [vars]
-# URL del proyecto "jornadia" en Supabase (Project Settings → Data API)
-SUPABASE_URL = "https://zjkjpdnydxaumjxqlcjj.supabase.co"
-# Dominio ficticio para las cuentas de trabajadores (no se envían correos)
-WORKER_EMAIL_DOMAIN = "trabajadores.jornadia.mx"
+# URL del proyecto "korporia" en Supabase (Project Settings → Data API)
+SUPABASE_URL = "https://TU-PROYECTO.supabase.co"
+# Dominio ficticio para las cuentas de colaboradores (no se envían correos)
+WORKER_EMAIL_DOMAIN = "trabajadores.korporia.com"
 
 # Secretos (no van en este archivo):
 #   wrangler secret put SUPABASE_SERVICE_ROLE_KEY

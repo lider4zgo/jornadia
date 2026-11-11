@@ -538,6 +538,30 @@ input.pin {
   border-top-color: var(--ink);
 }
 
+/* ---------- Selector de módulos (cuando la empresa tiene más de uno) ---------- */
+
+.module-nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+.module-nav button {
+  border: 1.5px solid var(--line);
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--slate);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.module-nav button[aria-current='page'] {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
 /* ---------- Panel (escritorio y celular) ---------- */
 
 .panel-nav {
