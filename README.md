@@ -76,7 +76,7 @@ Reglas de la arquitectura:
    - Variables de compilación: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SUPPORT_WHATSAPP`
 4. En el Worker → **Settings → Variables and Secrets**, agrega como *Secret*: `SUPABASE_SERVICE_ROLE_KEY` y `SUPABASE_ANON_KEY`.
 
-La app queda en `https://korporia.<tu-cuenta>.workers.dev`. Cuando compres `korporia.com`, se conecta en **Settings → Domains & Routes**.
+La app queda en `https://app.korporia.com` (definido en `routes` de `wrangler.toml`) y también en `https://korporia.<tu-cuenta>.workers.dev`.
 
 ### 3. Primer uso
 

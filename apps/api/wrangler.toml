@@ -5,6 +5,12 @@ main = "src/index.ts"
 compatibility_date = "2025-09-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Dominio propio de la app. La zona korporia.com está en esta misma cuenta de
+# Cloudflare; al desplegar se crea el registro DNS y el certificado.
+routes = [
+  { pattern = "app.korporia.com", custom_domain = true }
+]
+
 [assets]
 directory = "../web/dist"
 binding = "ASSETS"
