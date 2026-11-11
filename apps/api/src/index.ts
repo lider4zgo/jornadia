@@ -15,7 +15,23 @@ app.use('/api/*', async (c, next) => {
   c.header('Cache-Control', c.res.headers.get('Cache-Control') ?? 'no-store');
 });
 
-app.get('/api/health', (c) => c.json({ ok: true, serverTime: new Date().toISOString() }));
+// Variables que el Worker necesita (solo se informa si existen, nunca su valor)
+const REQUIRED_ENV = ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY', 'WORKER_EMAIL_DOMAIN'] as const;
+const missingEnv = (env: Record<string, unknown>) => REQUIRED_ENV.filter((k) => typeof env[k] !== 'string' || !(env[k] as string).trim());
+
+app.get('/api/health', (c) => {
+  const missing = missingEnv(c.env as unknown as Record<string, unknown>);
+  return c.json({ ok: missing.length === 0, missing, files: Boolean(c.env.FILES), serverTime: new Date().toISOString() }, missing.length ? 500 : 200);
+});
+
+app.use('/api/*', async (c, next) => {
+  const missing = missingEnv(c.env as unknown as Record<string, unknown>);
+  if (missing.length) {
+    console.error('Missing Worker configuration', missing);
+    return c.json({ error: `Falta configurar en el Worker: ${missing.join(', ')}.` }, 500);
+  }
+  await next();
+});
 
 // Núcleo: sesión, empresas, usuarios
 app.route('/api/core/me', me);
