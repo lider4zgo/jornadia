@@ -5,6 +5,18 @@ import { Mark, WhatsAppLink } from '../common';
 
 const CODE_KEY = 'korporia-company-code';
 
+/** Traduce el error de Supabase Auth a un mensaje claro, sin ocultar la causa real. */
+function signInErrorMessage(err: { message: string; status?: number; name?: string }): string {
+  const msg = err.message ?? '';
+  if (/invalid login/i.test(msg)) return 'Correo o contraseña incorrectos.';
+  if (/email not confirmed/i.test(msg)) return 'Tu correo no está confirmado. Pide que confirmen tu usuario.';
+  if (/api key|apikey/i.test(msg) || err.status === 401) return 'La app no está bien configurada: la llave de Supabase no es válida. Avisa a soporte.';
+  if (err.name === 'AuthRetryableFetchError' || err.status === 0 || /fetch/i.test(msg)) {
+    return 'No se pudo conectar con el servidor de inicio de sesión. Revisa tu conexión.';
+  }
+  return `No se pudo iniciar sesión (${err.status ?? 'sin código'}): ${msg}`;
+}
+
 export function Login() {
   const [mode, setMode] = useState<'worker' | 'staff'>(() => (localStorage.getItem('korporia-login-mode') === 'staff' ? 'staff' : 'worker'));
   const [code, setCode] = useState(localStorage.getItem(CODE_KEY) ?? '');
@@ -51,9 +63,7 @@ export function Login() {
         return;
       }
       const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-      if (err) {
-        setError(err.message.includes('Invalid login') ? 'Correo o contraseña incorrectos.' : 'No se pudo iniciar sesión. Revisa tu conexión.');
-      }
+      if (err) setError(signInErrorMessage(err));
     } catch (err) {
       setError(err instanceof NetworkError ? 'Sin conexión. Necesitas internet para entrar la primera vez.' : err instanceof ApiError ? err.message : 'No se pudo continuar.');
     } finally {
