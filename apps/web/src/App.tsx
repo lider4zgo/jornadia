@@ -71,7 +71,7 @@ export function App() {
       <div className="shell">
         <div className="content" style={{ paddingTop: 32 }}>
           <h1>Falta configurar Korporia</h1>
-          <p>Crea el archivo apps/web/.env.local con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (ver .env.example).</p>
+          <p>Crea el archivo apps/web/.env.local con VITE_SUPABASE_URL y VITE_SUPABASE_PUBLISHABLE_KEY (ver .env.example).</p>
         </div>
       </div>
     );

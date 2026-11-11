@@ -2,8 +2,10 @@ export interface Env {
   ASSETS: Fetcher;
   FILES: R2Bucket;
   SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
+  /** Llave pública (sb_publishable_…): actúa como el usuario, sujeta a RLS */
+  SUPABASE_PUBLISHABLE_KEY: string;
+  /** Llave secreta (sb_secret_…): privilegios de servicio, solo en el servidor */
+  SUPABASE_SECRET_KEY: string;
   WORKER_EMAIL_DOMAIN: string;
 }
 

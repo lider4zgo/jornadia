@@ -63,7 +63,7 @@ Reglas de la arquitectura:
 5. **Authentication → Users → Add user**: crea tu usuario con tu correo y contraseña (marca *Auto Confirm User*).
 6. **SQL Editor** → ejecuta `supabase/seed_superadmin.sql` con tu correo.
 7. Recomendado: **Project Settings → JWT Keys** → usa llaves de firma asimétricas. Así la API valida las sesiones sin consultar a Supabase en cada petición (si no, funciona igual, solo un poco más lento).
-8. **Project Settings → API**: copia *Project URL*, la llave *anon* y la llave *service_role* (esta última es secreta).
+8. **Project Settings → API Keys**: copia la llave *Publishable* (`sb_publishable_…`) y la *Secret* (`sb_secret_…`, secreta). La *Project URL* está en Data API.
 
 ### 2. Cloudflare
 
@@ -73,8 +73,8 @@ Reglas de la arquitectura:
    - Root directory: `apps/api`
    - Build command: `cd ../.. && npm ci && npm run build -w @korporia/web`
    - Deploy command: `npx wrangler deploy`
-   - Variables de compilación: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SUPPORT_WHATSAPP`
-4. En el Worker → **Settings → Variables and Secrets**, agrega como *Secret*: `SUPABASE_SERVICE_ROLE_KEY` y `SUPABASE_ANON_KEY`.
+   - Variables de compilación: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPPORT_WHATSAPP`
+4. En el Worker → **Settings → Variables and Secrets**, agrega como *Secret*: `SUPABASE_SECRET_KEY` y `SUPABASE_PUBLISHABLE_KEY`.
 
 La app queda en `https://app.korporia.com` (definido en `routes` de `wrangler.toml`) y también en `https://korporia.<tu-cuenta>.workers.dev`.
 

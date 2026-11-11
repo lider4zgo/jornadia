@@ -23,11 +23,13 @@ bucket_name = "korporia-files"
 
 [vars]
 # URL del proyecto "korporia" en Supabase (Project Settings → Data API)
-SUPABASE_URL = "https://TU-PROYECTO.supabase.co"
+SUPABASE_URL = "https://obrzmsaxiafcyjbfdmhr.supabase.co"
 # Dominio ficticio para las cuentas de colaboradores (no se envían correos)
 WORKER_EMAIL_DOMAIN = "trabajadores.korporia.com"
 
 # Secretos (no van en este archivo):
-#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-#   wrangler secret put SUPABASE_ANON_KEY
+#   SUPABASE_SECRET_KEY       (sb_secret_…)
+#   SUPABASE_PUBLISHABLE_KEY  (sb_publishable_…)
+# Se cargan en Cloudflare → Worker → Settings → Variables and Secrets,
+# o con: wrangler secret put <NOMBRE>
 # Para desarrollo local, crea apps/api/.dev.vars con esas dos variables.

@@ -7,14 +7,14 @@ let cached: { key: string; client: SupabaseClient } | null = null;
 
 /** Cliente con privilegios de servicio: solo para lecturas internas y escrituras ya validadas por la API. */
 export function adminClient(env: Env): SupabaseClient {
-  const key = `${env.SUPABASE_URL}|${env.SUPABASE_SERVICE_ROLE_KEY}`;
-  if (cached?.key !== key) cached = { key, client: createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, options) };
+  const key = `${env.SUPABASE_URL}|${env.SUPABASE_SECRET_KEY}`;
+  if (cached?.key !== key) cached = { key, client: createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, options) };
   return cached.client;
 }
 
 /** Cliente que actúa como el usuario: todas las lecturas pasan por RLS. */
 export function userClient(env: Env, accessToken: string): SupabaseClient {
-  return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  return createClient(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, {
     ...options,
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
