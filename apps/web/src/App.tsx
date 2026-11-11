@@ -4,6 +4,7 @@ import { api, ApiError, NetworkError, setActiveCompany } from './lib/api';
 import { canEnterModule } from './lib/access';
 import { syncClock } from './lib/clock';
 import { navigate, splitPath, usePath } from './lib/router';
+import { applyUpdate, useUpdateAvailable } from './lib/update';
 import { isConfigured, openedFromRecoveryLink, supabase } from './lib/supabase';
 import { Mark, Spinner, WhatsAppLink } from './common';
 import { Login } from './core/Login';
@@ -31,19 +32,23 @@ export function App() {
     return () => data.subscription.unsubscribe();
   }, []);
 
+  // Supabase vuelve a anunciar la sesión al regresar a la pestaña o al renovar el token.
+  // Solo se recarga todo si cambia el USUARIO; así no se pierde lo que se estaba capturando.
+  const userId = session?.user.id;
+
   const loadMe = useCallback(async () => {
-    if (!session) return;
+    if (!userId) return;
     const started = Date.now();
     try {
       const data = await api<Me>('/api/core/me');
       syncClock(data.serverTime, started);
       setActiveCompany(data.company?.id ?? null);
-      localStorage.setItem(meCacheKey(session.user.id), JSON.stringify(data));
+      localStorage.setItem(meCacheKey(userId), JSON.stringify(data));
       setMe(data);
       setLoadError(null);
     } catch (err) {
       // Sin señal: se abre con los datos guardados de la última vez
-      const cached = localStorage.getItem(meCacheKey(session.user.id));
+      const cached = localStorage.getItem(meCacheKey(userId));
       if (err instanceof NetworkError && cached) {
         const data = JSON.parse(cached) as Me;
         setActiveCompany(data.company?.id ?? null);
@@ -52,12 +57,12 @@ export function App() {
         setLoadError(err instanceof ApiError ? err.message : 'No se pudo conectar. Revisa tu señal e intenta de nuevo.');
       }
     }
-  }, [session]);
+  }, [userId]);
 
   useEffect(() => {
     setMe(null);
-    if (session) void loadMe();
-  }, [session, loadMe]);
+    void loadMe();
+  }, [loadMe]);
 
   async function signOut() {
     const pending = (await listQueue()).filter((q) => !q.rejected).length;
@@ -136,6 +141,7 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
           Salir
         </button>
       </header>
+      <UpdateBanner />
       <Body me={me} current={current?.key} section={current?.key === moduleKey ? section : ''} reload={reload} />
     </div>
   );
@@ -168,5 +174,19 @@ function Body({ me, current, section, reload }: { me: Me; current?: string; sect
     <Suspense fallback={<Spinner label={`Abriendo ${module.name}…`} />}>
       <Component me={me} section={section} reload={reload} />
     </Suspense>
+  );
+}
+
+/** Aviso de versión nueva: la app no se recarga sola para no perder lo que se está capturando. */
+function UpdateBanner() {
+  const available = useUpdateAvailable();
+  if (!available) return null;
+  return (
+    <div className="notice update-banner" role="status">
+      <span>Hay una versión nueva de Korporia.</span>
+      <button className="btn small solid" onClick={applyUpdate}>
+        Actualizar
+      </button>
+    </div>
   );
 }

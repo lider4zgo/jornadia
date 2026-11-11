@@ -692,3 +692,14 @@ tr:last-child td { border-bottom: 0; }
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
+
+/* ---------- Aviso de versión nueva ---------- */
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px auto 0;
+  max-width: var(--content-max, 1100px);
+}

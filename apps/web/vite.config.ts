@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': avisa de la versión nueva en lugar de recargar sola (ver src/lib/update.ts)
+      registerType: 'prompt',
       includeAssets: ['icon.svg'],
       manifest: {
         name: 'Korporia — RH y finanzas para PyMEs',
