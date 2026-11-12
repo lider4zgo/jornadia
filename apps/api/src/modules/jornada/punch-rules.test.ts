@@ -105,4 +105,23 @@ describe('decidePunch', () => {
     expect(late.ok && late.flags.includes('late_sync')).toBe(true);
     expect(ahead.ok && ahead.flags.includes('device_clock_ahead')).toBe(true);
   });
+
+  it('sin biometría, el PIN correcto sustituye a la verificación facial', () => {
+    const d = decidePunch({ ...base, face_score: null }, ctx({ hasFaceReference: false, consentConfirmed: false, pin: true }));
+    expect(d.ok).toBe(true);
+    if (d.ok) {
+      expect(d.flags).toContain('pin');
+      expect(d.flags).not.toContain('consent_missing');
+      expect(d.flags).not.toContain('no_face_reference');
+      expect(d.faceMatched).toBeNull();
+    }
+  });
+
+  it('rechaza un PIN incorrecto en línea y lo marca si fue sin conexión', () => {
+    const online = decidePunch({ ...base, face_score: null }, ctx({ pin: false }));
+    expect(online.ok).toBe(false);
+    if (!online.ok) expect(online.code).toBe('pin');
+    const offline = decidePunch({ ...base, face_score: null, captured_offline: true, device_ts: '2027-01-04T13:55:00.000Z' }, ctx({ pin: false }));
+    expect(offline.ok && offline.flags.includes('pin_failed')).toBe(true);
+  });
 });

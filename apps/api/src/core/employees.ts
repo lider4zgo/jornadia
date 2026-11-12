@@ -3,7 +3,10 @@ import { HTTPException } from 'hono/http-exception';
 import type { AppEnv } from '../env';
 import { invalidateAccess, requireAuth, requirePermission } from '../lib/auth';
 import { str, UUID_RE } from '../lib/input';
-import { adminClient, audit, coreDb } from '../lib/supabase';
+import { storeDocument } from '../lib/documents';
+import { loadCredentials } from '../lib/pin';
+import { adminClient, audit, coreDb, rhDb } from '../lib/supabase';
+import { applyBiometricChoice, workerDocsState, type BiometricChoice } from '../lib/worker-docs';
 
 export const employees = new Hono<AppEnv>();
 employees.use('*', requireAuth);
@@ -127,4 +130,97 @@ employees.patch('/:id', async (c) => {
   });
 
   return c.json({ employee: updated });
+});
+
+/**
+ * Estado de acceso y firmas de un colaborador (para el administrador).
+ * GET /api/core/employees/:id/access
+ */
+employees.get('/:id/access', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  if (!UUID_RE.test(id)) throw new HTTPException(400, { message: 'Colaborador inválido.' });
+  const core = coreDb(adminClient(c.env));
+  const { data: employee } = await core.from('employees').select('id, company_id, full_name, employee_number').eq('id', id).maybeSingle();
+  if (!employee) throw new HTTPException(404, { message: 'Colaborador no encontrado.' });
+  requirePermission(auth, employee.company_id, 'core.personal.ver');
+  const [creds, state, { data: history }] = await Promise.all([
+    loadCredentials(c.env, id),
+    workerDocsState(c.env, employee),
+    core
+      .from('employee_acceptances')
+      .select('document, version, choice, method, signed_at, evidence_path')
+      .eq('employee_id', id)
+      .order('signed_at', { ascending: false })
+      .limit(30),
+  ]);
+  return c.json({
+    hasPin: Boolean(creds?.pin_hash),
+    activationPending: Boolean(creds?.activation_hash && creds.activation_expires_at && Date.parse(creds.activation_expires_at) > Date.now()),
+    activationExpiresAt: creds?.activation_expires_at ?? null,
+    locked: Boolean(creds?.locked_until && Date.parse(creds.locked_until) > Date.now()),
+    pending: state.pending,
+    biometric: state.biometric,
+    history: history ?? [],
+  });
+});
+
+/**
+ * Formato impreso firmado a mano (versión impresa del aviso, acuerdo y consentimiento).
+ * El administrador sube la foto del formato; queda como evidencia en el expediente.
+ * POST /api/core/employees/:id/printed (multipart) file, aviso=1, acuerdo=1, biometric=autorizo|no_autorizo
+ */
+employees.post('/:id/printed', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  if (!UUID_RE.test(id)) throw new HTTPException(400, { message: 'Colaborador inválido.' });
+  const core = coreDb(adminClient(c.env));
+  const { data: employee } = await core.from('employees').select('id, company_id, full_name, employee_number, active').eq('id', id).maybeSingle();
+  if (!employee) throw new HTTPException(404, { message: 'Colaborador no encontrado.' });
+  requirePermission(auth, employee.company_id, 'core.personal.gestionar');
+
+  const body = await c.req.parseBody();
+  const state = await workerDocsState(c.env, employee);
+  const biometric = body.biometric === 'autorizo' || body.biometric === 'no_autorizo' ? (body.biometric as BiometricChoice) : null;
+  const rows: { document: string; version: string; choice: string }[] = [];
+  if (body.aviso === '1') rows.push({ document: 'aviso_trabajadores', version: state.docs.aviso.version, choice: 'acepto' });
+  if (body.acuerdo === '1' && state.docs.acuerdo) rows.push({ document: 'acuerdo_jornada', version: state.docs.acuerdo.version, choice: 'acepto' });
+  if (biometric && state.docs.biometria) rows.push({ document: 'biometria', version: state.docs.biometria.version, choice: biometric });
+  if (rows.length === 0) throw new HTTPException(400, { message: 'Marca qué documentos firmó el colaborador.' });
+
+  const doc = await storeDocument(c.env, {
+    companyId: employee.company_id,
+    employeeId: employee.id,
+    kind: 'consentimiento',
+    file: body.file,
+    uploadedBy: auth.userId,
+    byEmployee: false,
+    name: `Formato firmado ${new Date().toISOString().slice(0, 10)}`,
+  });
+  const { data: stored } = await rhDb(adminClient(c.env)).from('documents').select('path').eq('id', doc.id).single();
+  const { error } = await core.from('employee_acceptances').insert(
+    rows.map((r) => ({
+      ...r,
+      company_id: employee.company_id,
+      employee_id: employee.id,
+      method: 'impreso',
+      recorded_by: auth.userId,
+      evidence_path: stored?.path ?? null,
+    })),
+  );
+  if (error) {
+    console.error('printed acceptances failed', error);
+    throw new HTTPException(500, { message: 'No se pudo registrar el formato.' });
+  }
+  const bio = rows.find((r) => r.document === 'biometria');
+  if (bio) await applyBiometricChoice(c.env, employee, bio.choice as BiometricChoice, auth.userId);
+  await audit(c.env, {
+    company_id: employee.company_id,
+    actor_id: auth.userId,
+    action: 'employee.printed_format',
+    entity: 'core.employees',
+    entity_id: employee.id,
+    details: Object.fromEntries(rows.map((r) => [r.document, r.choice])),
+  });
+  return c.json({ ok: true, document: doc }, 201);
 });

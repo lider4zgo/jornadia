@@ -23,7 +23,13 @@ export function Login() {
   const [mode, setMode] = useState<'worker' | 'staff'>(() => (localStorage.getItem('korporia-login-mode') === 'staff' ? 'staff' : 'worker'));
   const [code, setCode] = useState(localStorage.getItem(CODE_KEY) ?? '');
   const [number, setNumber] = useState('');
-  const [match, setMatch] = useState<{ company: string; name: string; ready: boolean } | null>(null);
+  const [match, setMatch] = useState<{ company: string; name: string; hasPin: boolean; activationPending: boolean } | null>(null);
+  // Trabajador: PIN (ya activó su acceso) o código de activación + PIN nuevo (primera vez)
+  const [pin, setPin] = useState('');
+  const [activationCode, setActivationCode] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [newPin2, setNewPin2] = useState('');
+  const [activating, setActivating] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -74,10 +80,12 @@ export function Login() {
     try {
       if (mode === 'worker') {
         // Paso 1: mostrar empresa y nombre para que la persona confirme que es ella
-        const found = await api<{ company: string; name: string; ready: boolean }>('/api/jornada/auth/lookup', {
+        const found = await api<{ company: string; name: string; hasPin: boolean; activationPending: boolean }>('/api/core/worker-access/lookup', {
           body: { code, number },
         });
         setMatch(found);
+        setActivating(!found.hasPin);
+        setPin('');
         return;
       }
       const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
@@ -89,12 +97,21 @@ export function Login() {
     }
   }
 
-  /** Paso 2: la persona confirmó; se canjea un token de un solo uso por la sesión. */
-  async function confirmWorker() {
+  /** Paso 2: entra con su PIN o, la primera vez, activa su acceso y crea su PIN. */
+  async function confirmWorker(e?: FormEvent) {
+    e?.preventDefault();
     setError(null);
+    if (activating) {
+      if (!/^\d{4}$/.test(newPin)) return setError('Tu PIN debe tener 4 números.');
+      if (newPin !== newPin2) return setError('Los dos PIN no coinciden.');
+    }
     setBusy(true);
     try {
-      const { token_hash } = await api<{ token_hash: string }>('/api/jornada/auth/session', { body: { code, number } });
+      const { token_hash } = activating
+        ? await api<{ token_hash: string }>('/api/core/worker-access/activate', {
+            body: { code, number, activation_code: activationCode.replace(/\s/g, ''), pin: newPin },
+          })
+        : await api<{ token_hash: string }>('/api/core/worker-access/session', { body: { code, number, pin } });
       const { error: err } = await supabase.auth.verifyOtp({ token_hash, type: 'magiclink' });
       if (err) throw new Error('No se pudo iniciar sesión. Intenta de nuevo.');
       localStorage.setItem(CODE_KEY, code.trim().toLowerCase());
@@ -121,27 +138,75 @@ export function Login() {
         </div>
 
         {mode === 'worker' && match ? (
-          <div className="stack">
+          <form className="stack" onSubmit={(e) => void confirmWorker(e)} noValidate>
             <div className="sheet" role="status">
               <p className="muted">{match.company}</p>
               <h2 style={{ fontSize: '1.7rem' }}>¿Eres {match.name}?</h2>
               <p className="muted">Número de empleado {number.trim()}</p>
             </div>
-            {!match.ready && (
-              <div className="notice warn">
-                <strong>Falta tu foto de registro</strong>
-                Antes de tu primera checada, tu supervisor debe tomarte la foto desde su celular. Búscalo y después vuelve a entrar.
-              </div>
+            {activating ? (
+              <>
+                <p className="muted" style={{ margin: 0 }}>
+                  Primera vez: escribe el código de activación que te dio tu supervisor y crea un PIN de 4 números. Con él entrarás y
+                  firmarás tus documentos.
+                </p>
+                <label className="field">
+                  Código de activación
+                  <input
+                    value={activationCode}
+                    onChange={(e) => setActivationCode(e.target.value.replace(/[^\d\s]/g, ''))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={7}
+                    required
+                  />
+                </label>
+                <div className="form-grid">
+                  <label className="field">
+                    Crea tu PIN
+                    <input type="password" value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="new-password" required />
+                  </label>
+                  <label className="field">
+                    Repite tu PIN
+                    <input type="password" value={newPin2} onChange={(e) => setNewPin2(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="new-password" required />
+                  </label>
+                </div>
+                <small className="muted">No uses 1234 ni 1111. No se lo compartas a nadie.</small>
+              </>
+            ) : (
+              <label className="field">
+                Tu PIN
+                <input
+                  type="password"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  inputMode="numeric"
+                  autoComplete="current-password"
+                  required
+                  autoFocus
+                  style={{ letterSpacing: '0.4em', fontSize: '1.4rem', textAlign: 'center' }}
+                />
+              </label>
             )}
             {error && (
               <div className="notice error" role="alert">
                 {error}
               </div>
             )}
-            <button className="btn solid block" onClick={() => void confirmWorker()} disabled={busy || !match.ready}>
-              {busy ? 'Entrando…' : 'Sí, soy yo'}
-            </button>
             <button
+              className="btn solid block"
+              type="submit"
+              disabled={busy || (activating ? activationCode.replace(/\s/g, '').length < 6 || newPin.length < 4 || newPin2.length < 4 : pin.length < 4)}
+            >
+              {busy ? 'Entrando…' : activating ? 'Activar y entrar' : 'Entrar'}
+            </button>
+            {match.hasPin && (
+              <button type="button" className="btn quiet block" onClick={() => { setActivating(!activating); setError(null); }}>
+                {activating ? 'Ya tengo PIN' : 'Olvidé mi PIN (tengo un código nuevo)'}
+              </button>
+            )}
+            <button
+              type="button"
               className="btn quiet block"
               onClick={() => {
                 setMatch(null);
@@ -151,7 +216,7 @@ export function Login() {
             >
               No soy yo
             </button>
-          </div>
+          </form>
         ) : mode === 'staff' && codeSentTo ? (
           <EmailCode email={codeSentTo} onBack={() => setCodeSentTo(null)} />
         ) : mode === 'staff' && forgot ? (

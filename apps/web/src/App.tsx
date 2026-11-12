@@ -11,6 +11,9 @@ import { Login } from './core/Login';
 import { SetPassword } from './core/SetPassword';
 import { CreateCompany } from './core/CreateCompany';
 import { CompleteSignup, Signup } from './core/Signup';
+import { WorkerDocs } from './core/WorkerDocs';
+import { PlanBanner } from './core/PlanBanner';
+import { PlatformCompanies } from './core/PlatformCompanies';
 import { WEB_MODULES } from './modules';
 import { listQueue } from './modules/jornada/lib/queue';
 import type { Me } from './types';
@@ -111,6 +114,15 @@ export function App() {
     );
   }
 
+  // Trabajador: firma el aviso, el acuerdo de jornada y su decisión biométrica antes de usar la app
+  if (me.worker && me.worker.pending.length > 0) {
+    return (
+      <div className="shell">
+        <WorkerDocs onDone={() => void loadMe()} onSignOut={() => void signOut()} />
+      </div>
+    );
+  }
+
   return <Shell me={me} email={session.user.email} reload={loadMe} signOut={signOut} />;
 }
 
@@ -132,7 +144,8 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
   }, [current, moduleKey]);
 
   // El colaborador (sin permisos de gestión) usa la vista angosta de celular
-  const manages = me.permissions.some((p) => p !== 'jornada.checar');
+  const SELF_SERVICE = ['jornada.checar', 'jornada.registros.propios', 'rh.portal.ver', 'rh.portal.solicitar'];
+  const manages = me.permissions.some((p) => !SELF_SERVICE.includes(p));
   const wide = manages || (me.isPlatformAdmin && !me.company);
 
   return (
@@ -147,7 +160,7 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
           <nav className="module-nav" aria-label="Módulos">
             {available.map((m) => (
               <button key={m.key} aria-current={m.key === current?.key ? 'page' : undefined} onClick={() => navigate(`/${m.key}`)}>
-                {m.name}
+                {m.label?.(me) ?? m.name}
               </button>
             ))}
           </nav>
@@ -158,13 +171,23 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
         </button>
       </header>
       <UpdateBanner />
+      <PlanBanner me={me} />
       <Body me={me} current={current?.key} section={current?.key === moduleKey ? section : ''} reload={reload} />
     </div>
   );
 }
 
 function Body({ me, current, section, reload }: { me: Me; current?: string; section: string; reload: () => Promise<void> }) {
-  if (me.isPlatformAdmin && !me.company) return <CreateCompany onCreated={() => void reload()} />;
+  if (me.isPlatformAdmin && !me.company) {
+    return (
+      <>
+        <CreateCompany onCreated={() => void reload()} />
+        <div className="content">
+          <PlatformCompanies />
+        </div>
+      </>
+    );
+  }
   if (!me.company) {
     return (
       <div className="content">

@@ -37,3 +37,7 @@ WORKER_EMAIL_DOMAIN = "trabajadores.korporia.com"
 # Se cargan en Cloudflare → Worker → Settings → Variables and Secrets,
 # o con: wrangler secret put <NOMBRE>
 # Para desarrollo local, crea apps/api/.dev.vars con esas dos variables.
+
+# Tareas diarias a las 3:00 a. m. de la Ciudad de México (9:00 UTC)
+[triggers]
+crons = ["0 9 * * *"]

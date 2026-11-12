@@ -11,7 +11,10 @@ export interface QueuedPunch {
   companyId: string;
   kind: PunchKind;
   data: Record<string, unknown>;
-  selfie: Blob;
+  /** Con consentimiento biométrico */
+  selfie?: Blob | null;
+  /** Sin biometría: el PIN se verifica al enviar (queda solo en este teléfono hasta entonces) */
+  pin?: string | null;
   queuedAt: string;
   attempts: number;
   /** Rechazada por el servidor: ya no se reintenta, se muestra al trabajador */
@@ -47,10 +50,11 @@ export async function dismiss(clientUuid: string) {
   await notify();
 }
 
-export function punchForm(data: Record<string, unknown>, selfie: Blob): FormData {
+export function punchForm(data: Record<string, unknown>, proof: { selfie?: Blob | null; pin?: string | null }): FormData {
   const form = new FormData();
   form.set('data', JSON.stringify(data));
-  form.set('selfie', new File([selfie], 'selfie.jpg', { type: selfie.type || 'image/jpeg' }));
+  if (proof.selfie) form.set('selfie', new File([proof.selfie], 'selfie.jpg', { type: proof.selfie.type || 'image/jpeg' }));
+  if (proof.pin) form.set('pin', proof.pin);
   return form;
 }
 
@@ -66,7 +70,7 @@ export async function flushQueue(): Promise<number> {
       if (item.rejected) continue;
       try {
         await api('/api/jornada/punches', {
-          body: punchForm(item.data, item.selfie),
+          body: punchForm(item.data, { selfie: item.selfie, pin: item.pin }),
           timeoutMs: 30000,
           companyId: item.companyId,
         });

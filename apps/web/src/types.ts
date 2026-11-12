@@ -6,6 +6,23 @@ export interface Subscription {
   plan: string;
   employee_limit: number;
   trial_ends_at: string | null;
+  /** Usuarios de administración permitidos (Korporia Starter: 1) */
+  admin_limit: number | null;
+  /** Korporia Starter: fin del checador (día 90) y de RH básico (mes 6) */
+  starter_clock_until: string | null;
+  starter_hr_until: string | null;
+  /** Desde aquí la cuenta queda en solo lectura (90 días con exportación) */
+  read_only_at: string | null;
+  doc_mb_per_employee: number | null;
+}
+
+export type WorkerDocKey = 'aviso_trabajadores' | 'acuerdo_jornada' | 'biometria';
+
+/** Estado del trabajador: PIN y documentos por firmar. */
+export interface WorkerState {
+  hasPin: boolean;
+  pending: WorkerDocKey[];
+  biometric: 'autorizo' | 'no_autorizo' | 'retiro' | null;
 }
 
 export interface Company {
@@ -38,6 +55,10 @@ export interface Me {
   permissions: string[];
   /** Módulos activos de la empresa */
   modules: string[];
+  /** Módulos que aceptan cambios hoy ('core' = la cuenta); los demás, solo lectura por el plan */
+  writable?: string[];
+  worker?: WorkerState | null;
+  rh?: { pendingLeaves: number };
   company?: Company;
   companies: { id: string; name: string }[];
   sites?: (Site & { address?: string | null })[];

@@ -6,7 +6,10 @@ import { companies } from './core/companies';
 import { employees } from './core/employees';
 import { me } from './core/me';
 import { members } from './core/members';
+import { my } from './core/my';
 import { signup, waitlist } from './core/signup';
+import { activation, workerAccess } from './core/worker-access';
+import { runDailyJobs } from './lib/daily';
 import { serveStatic } from './lib/static';
 import { MODULE_REGISTRY } from './modules';
 
@@ -41,6 +44,9 @@ app.route('/api/core/me', me);
 app.route('/api/core/companies', companies);
 app.route('/api/core/members', members);
 app.route('/api/core/employees', employees);
+app.route('/api/core/employees', activation);
+app.route('/api/core/my', my);
+app.route('/api/core/worker-access', workerAccess);
 app.route('/api/core/signup', signup);
 app.route('/api/core/waitlist', waitlist);
 
@@ -59,4 +65,10 @@ app.onError((err, c) => {
   return c.json({ error: 'Ocurrió un error inesperado. Intenta de nuevo.' }, 500);
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  /** Cron diario (wrangler.toml → [triggers]): vigencias de planes y borrado de selfies. */
+  async scheduled(_event: ScheduledController, env: AppEnv['Bindings'], ctx: ExecutionContext) {
+    ctx.waitUntil(runDailyJobs(env).then((r) => console.log('daily jobs', JSON.stringify(r))));
+  },
+} satisfies ExportedHandler<AppEnv['Bindings']>;

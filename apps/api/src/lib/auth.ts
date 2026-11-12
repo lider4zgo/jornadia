@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { createRemoteJWKSet, errors, jwtVerify } from 'jose';
-import { MODULES, moduleOf } from '@korporia/core';
+import { MODULES, moduleOf, READ_ONLY_OK } from '@korporia/core';
 import type { AppEnv, AuthContext, CompanyAccess, CompanyStatus, Env } from '../env';
 import { adminClient, coreDb } from './supabase';
 
@@ -64,7 +64,15 @@ async function loadAccess(env: Env, userId: string) {
     console.error('user_access failed', error);
     throw new HTTPException(500, { message: 'No se pudieron cargar tus permisos. Intenta de nuevo.' });
   }
-  type Row = { membership_id: string; company_id: string; role_key: string; permissions: string[]; modules: string[]; status: CompanyStatus | null };
+  type Row = {
+    membership_id: string;
+    company_id: string;
+    role_key: string;
+    permissions: string[];
+    modules: string[];
+    writable: string[] | null;
+    status: CompanyStatus | null;
+  };
   const value = {
     at: Date.now(),
     isPlatformAdmin: Boolean(platform),
@@ -74,6 +82,7 @@ async function loadAccess(env: Env, userId: string) {
       role: r.role_key,
       permissions: new Set(r.permissions),
       modules: new Set(r.modules),
+      writable: new Set(r.writable ?? r.modules),
       status: r.status,
     })),
   };
@@ -115,32 +124,47 @@ export function accessFor(auth: AuthContext, companyId: string): CompanyAccess |
 }
 
 const SUSPENDED: CompanyStatus[] = ['suspended', 'archived'];
+/** Siempre disponible, para contratar o reactivar la cuenta. */
+const SUBSCRIPTION = 'core.empresa.suscripcion';
 
-/** ¿El módulo está contratado y la cuenta activa? (el núcleo siempre lo está) */
+/** ¿El módulo está contratado y la cuenta activa? (el núcleo, salvo en una cuenta archivada) */
 function moduleAvailable(a: CompanyAccess, module: string): boolean {
-  if (module === 'core') return true;
+  if (module === 'core') return a.status !== 'archived';
   return a.modules.has(module) && !SUSPENDED.includes(a.status ?? 'trial');
+}
+
+/** Lo que el plan permite hoy: los cambios se bloquean cuando el módulo o la cuenta pasan a solo lectura. */
+function allowedByPlan(a: CompanyAccess, permission: string): boolean {
+  if (permission === SUBSCRIPTION) return true;
+  const module = moduleOf(permission);
+  return moduleAvailable(a, module) && (READ_ONLY_OK.has(permission) || a.writable.has(module));
 }
 
 /** Misma regla que core.can() en la base de datos. */
 export function can(auth: AuthContext, companyId: string, permission: string): boolean {
   if (auth.isPlatformAdmin) return true;
   const a = accessFor(auth, companyId);
-  return Boolean(a && a.permissions.has(permission) && moduleAvailable(a, moduleOf(permission)));
+  return Boolean(a && a.permissions.has(permission) && allowedByPlan(a, permission));
 }
 
-/** Exige al menos uno de los permisos. Distingue "no contratado" (402) de "sin permiso" (403). */
+/** Mensaje cuando el plan bloquea un permiso que el rol sí tiene. */
+function planMessage(a: CompanyAccess, permission: string): string {
+  const module = moduleOf(permission);
+  const name = MODULES.find((m) => m.key === module)?.name ?? module;
+  if (a.status === 'archived') return 'La cuenta de tu empresa está archivada. Contrata un plan para recuperarla.';
+  if (SUSPENDED.includes(a.status ?? 'trial')) return 'La cuenta de tu empresa está suspendida. Avisa a tu administrador.';
+  if (!a.modules.has(module) && module !== 'core') return `Tu empresa no tiene contratado el módulo ${name}.`;
+  if (!a.writable.has('core')) return 'Tu plan terminó y la cuenta está en solo lectura: puedes consultar y exportar tu información. Contrata un plan para seguir usándola.';
+  if (module === 'jornada') return 'El checador de Korporia Starter terminó. Tus registros siguen disponibles para consultar y exportar; contrata Jornada para seguir registrando.';
+  return `El periodo de ${name} de tu plan terminó: puedes consultar tu información, pero no hacer cambios. Contrata un plan para seguir usándolo.`;
+}
+
+/** Exige al menos uno de los permisos. Distingue "lo bloquea el plan" (402) de "sin permiso" (403). */
 export function requirePermission(auth: AuthContext, companyId: string, ...permissions: string[]): void {
   if (permissions.some((p) => can(auth, companyId, p))) return;
   const a = accessFor(auth, companyId);
-  const blockedModule = a && permissions.find((p) => a.permissions.has(p) && !moduleAvailable(a, moduleOf(p)));
-  if (blockedModule) {
-    const name = MODULES.find((m) => m.key === moduleOf(blockedModule))?.name ?? moduleOf(blockedModule);
-    const message = SUSPENDED.includes(a.status ?? 'trial')
-      ? 'La cuenta de tu empresa está suspendida. Avisa a tu administrador.'
-      : `Tu empresa no tiene contratado el módulo ${name}.`;
-    throw new HTTPException(402, { message });
-  }
+  const blocked = a && permissions.find((p) => a.permissions.has(p) && !allowedByPlan(a, p));
+  if (a && blocked) throw new HTTPException(402, { message: planMessage(a, blocked) });
   throw new HTTPException(403, { message: 'No tienes permiso para esta acción.' });
 }
 

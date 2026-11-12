@@ -9,3 +9,8 @@ export function can(me: Me, ...permissions: string[]): boolean {
 export function canEnterModule(me: Me, module: string): boolean {
   return me.modules.includes(module) && me.permissions.some((p) => p.startsWith(`${module}.`));
 }
+
+/** ¿El módulo acepta cambios? (Korporia Starter lo deja en solo lectura al vencer su periodo) */
+export function writable(me: Me, module: string): boolean {
+  return !me.writable || (me.writable.includes('core') && me.writable.includes(module));
+}

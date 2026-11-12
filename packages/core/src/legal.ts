@@ -39,3 +39,20 @@ export function companyCodeFromName(name: string, maxLength = 12): string {
   const code = words.join('').slice(0, maxLength);
   return code.length >= 3 ? code : (code + 'kp').padEnd(3, '0');
 }
+
+/** Nombre comercial de cada plan (core.subscriptions.plan). */
+export const PLAN_LABELS: Record<string, string> = {
+  starter: 'Korporia Starter',
+  jornada: 'Korporia Jornada',
+  trial: 'Prueba',
+  despegue: 'Korporia Despegue',
+  full: 'Korporia Full',
+  empresa: 'Korporia Empresa',
+};
+
+/** Espacio de documentos de Korporia Starter (decidido por Erik el 11 nov 2026). */
+export const STARTER_LIMITS = {
+  admins: 1,
+  docMbPerEmployee: 50,
+  docMaxFileMb: 10,
+} as const;

@@ -6,7 +6,7 @@ import { faceModelVersion, type CheckResult } from '../lib/face';
 import { getPosition, LocationError, type Position } from '../lib/geo';
 import { toCompressedJpeg } from '../../../lib/image';
 import { dismiss, enqueue, onQueueChange, punchForm, type QueuedPunch } from '../lib/queue';
-import { useOnline, useServerNow } from '../../../common';
+import { PinPrompt, useOnline, useServerNow } from '../../../common';
 import { isMobileDevice } from '../../../lib/device';
 import { Capture } from './Capture';
 import type { Me } from '../../../types';
@@ -33,6 +33,9 @@ export function Checar({ me, onPunched }: { me: Me; onPunched: () => void }) {
   const [positionPromise, setPositionPromise] = useState<Promise<Position | null> | null>(null);
   const [sending, setSending] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // Sin consentimiento biométrico se checa con PIN (sin cámara)
+  const biometric = me.worker?.biometric === 'autorizo';
+  const [askingPin, setAskingPin] = useState<PunchKind | null>(null);
 
   useEffect(() => onQueueChange(setQueue), []);
 
@@ -67,18 +70,51 @@ export function Checar({ me, onPunched }: { me: Me; onPunched: () => void }) {
         return null;
       }),
     );
-    setCapturing(kind);
+    if (biometric) setCapturing(kind);
+    else setAskingPin(kind);
   }
+
+  const deviceInfo = (extra: Record<string, unknown> = {}) => ({
+    ...extra,
+    device: isMobileDevice() ? 'celular' : 'computadora',
+    screen: `${screen.width}x${screen.height}`,
+    lang: navigator.language,
+  });
 
   async function finish(kind: PunchKind, face: CheckResult) {
     setCapturing(null);
     setSending(true);
     try {
-      const [position, selfie, modelVersion] = await Promise.all([
-        positionPromise ?? Promise.resolve(null),
-        toCompressedJpeg(face.frame),
-        faceModelVersion(),
-      ]);
+      const [selfie, modelVersion] = await Promise.all([toCompressedJpeg(face.frame), faceModelVersion()]);
+      await send(kind, { selfie }, {
+        face_score: face.similarity,
+        liveness_passed: face.livenessPassed,
+        antispoof_score: Math.round(face.real * 1000) / 1000,
+        model_version: modelVersion,
+        device_info: deviceInfo({ live: Math.round(face.live * 1000) / 1000, blinked: face.blinked }),
+      });
+    } catch (err) {
+      setOutcome({ type: 'error', kind, message: err instanceof ApiError || err instanceof Error ? err.message : 'No se pudo registrar.' });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function finishPin(kind: PunchKind, pin: string) {
+    setAskingPin(null);
+    setSending(true);
+    try {
+      await send(kind, { pin }, { device_info: deviceInfo({ method: 'pin' }) });
+    } catch (err) {
+      setOutcome({ type: 'error', kind, message: err instanceof ApiError || err instanceof Error ? err.message : 'No se pudo registrar.' });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function send(kind: PunchKind, proof: { selfie?: Blob; pin?: string }, extra: Record<string, unknown>) {
+    {
+      const position = await (positionPromise ?? Promise.resolve(null));
       const deviceTs = serverNow().toISOString();
       const data = {
         client_uuid: crypto.randomUUID(),
@@ -88,21 +124,18 @@ export function Checar({ me, onPunched }: { me: Me; onPunched: () => void }) {
         lng: position?.lng ?? null,
         accuracy_m: position?.accuracy_m ?? null,
         device_ts: deviceTs,
-        face_score: face.similarity,
-        liveness_passed: face.livenessPassed,
-        antispoof_score: Math.round(face.real * 1000) / 1000,
-        model_version: modelVersion,
-        device_info: {
-          live: Math.round(face.live * 1000) / 1000,
-          blinked: face.blinked,
-          device: isMobileDevice() ? 'celular' : 'computadora',
-          screen: `${screen.width}x${screen.height}`,
-          lang: navigator.language,
-        },
+        ...extra,
       };
 
       const saveOffline = async () => {
-        await enqueue({ client_uuid: data.client_uuid, companyId: me.company!.id, kind, data: { ...data, captured_offline: true }, selfie });
+        await enqueue({
+          client_uuid: data.client_uuid,
+          companyId: me.company!.id,
+          kind,
+          data: { ...data, captured_offline: true },
+          selfie: proof.selfie ?? null,
+          pin: proof.pin ?? null,
+        });
         setOutcome({ type: 'queued', kind, at: deviceTs });
       };
 
@@ -112,7 +145,7 @@ export function Checar({ me, onPunched }: { me: Me; onPunched: () => void }) {
       }
       try {
         const res = await api<{ punch: { server_ts: string; flags: string[] }; site: string | null }>('/api/jornada/punches', {
-          body: punchForm({ ...data, captured_offline: false }, selfie),
+          body: punchForm({ ...data, captured_offline: false }, proof),
           timeoutMs: 25000,
         });
         setOutcome({ type: 'ok', kind, at: res.punch.server_ts, site: res.site, flags: res.punch.flags });
@@ -121,10 +154,6 @@ export function Checar({ me, onPunched }: { me: Me; onPunched: () => void }) {
         if (err instanceof NetworkError) await saveOffline();
         else throw err;
       }
-    } catch (err) {
-      setOutcome({ type: 'error', kind, message: err instanceof ApiError || err instanceof Error ? err.message : 'No se pudo registrar.' });
-    } finally {
-      setSending(false);
     }
   }
 
@@ -183,6 +212,13 @@ export function Checar({ me, onPunched }: { me: Me; onPunched: () => void }) {
 
       <p className={`status-line ${statusClass}`}>{statusText}</p>
 
+      {biometric && !me.jornada?.face && (
+        <div className="notice warn">
+          <strong>Falta tu foto de registro</strong>
+          Pide a tu supervisor que te la tome. Mientras tanto tus checadas con selfie quedan marcadas para revisión.
+        </div>
+      )}
+
       <div className="chips">
         <span className={`chip dot ${online ? 'go' : 'warn'}`}>{online ? 'En línea' : 'Sin señal: se guardará en el teléfono'}</span>
         {pending.length > 0 && (
@@ -225,6 +261,16 @@ export function Checar({ me, onPunched }: { me: Me; onPunched: () => void }) {
           </button>
         ))}
       </div>
+
+      {askingPin && (
+        <PinPrompt
+          title={ACTION_LABEL[askingPin]}
+          hint="Escribe tu PIN para registrar. Tu ubicación se toma solo en este momento."
+          confirmLabel="Registrar"
+          onSubmit={(pin) => void finishPin(askingPin, pin)}
+          onCancel={() => setAskingPin(null)}
+        />
+      )}
 
       {capturing && (
         <Capture

@@ -29,6 +29,11 @@ export interface PunchContext {
   faceThreshold: number;
   hasFaceReference: boolean;
   consentConfirmed: boolean;
+  /**
+   * Checada sin biometría (el trabajador no autorizó el uso de su rostro): se identifica con
+   * su PIN. `true` = PIN correcto; `false` = PIN incorrecto (solo se acepta si fue sin conexión).
+   */
+  pin?: boolean;
   now: Date;
 }
 
@@ -111,9 +116,15 @@ export function decidePunch(input: PunchInput, ctx: PunchContext): PunchDecision
     if (isImpossibleJump(prev, { ...point, ts: nextTs })) flags.push('impossible_jump');
   }
 
-  // Verificación facial (calculada en el teléfono; se guarda el puntaje para auditoría)
+  // Identidad: PIN (sin biometría) o verificación facial (calculada en el teléfono)
   let faceMatched: boolean | null = null;
-  if (!ctx.hasFaceReference) {
+  if (ctx.pin !== undefined) {
+    flags.push('pin');
+    if (!ctx.pin) {
+      if (!offline) return { ok: false, status: 422, code: 'pin', message: 'El PIN no es correcto.' };
+      flags.push('pin_failed');
+    }
+  } else if (!ctx.hasFaceReference) {
     flags.push('no_face_reference');
   } else if (input.face_score == null) {
     if (!offline) return { ok: false, status: 422, code: 'face', message: 'No se pudo verificar tu rostro. Intenta de nuevo.' };
@@ -127,7 +138,7 @@ export function decidePunch(input: PunchInput, ctx: PunchContext): PunchDecision
       flags.push('face_mismatch');
     }
   }
-  if (input.liveness_passed === false) {
+  if (ctx.pin === undefined && input.liveness_passed === false) {
     if (!offline) return { ok: false, status: 422, code: 'liveness', message: 'No se detectó una persona real frente a la cámara.' };
     flags.push('liveness_failed');
   }
@@ -142,7 +153,7 @@ export function decidePunch(input: PunchInput, ctx: PunchContext): PunchDecision
     }
   }
 
-  if (!ctx.consentConfirmed) flags.push('consent_missing');
+  if (ctx.pin === undefined && !ctx.consentConfirmed) flags.push('consent_missing');
 
   return { ok: true, flags: [...new Set(flags)], geofence, faceMatched };
 }

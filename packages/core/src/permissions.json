@@ -1,28 +1,144 @@
 {
   "modules": [
-    { "key": "core", "name": "Núcleo", "billable": false },
-    { "key": "jornada", "name": "Jornada", "billable": true },
-    { "key": "nomina", "name": "Nómina", "billable": true },
-    { "key": "finanzas", "name": "Finanzas", "billable": true },
-    { "key": "reclutamiento", "name": "Reclutamiento", "billable": true }
+    {
+      "key": "core",
+      "name": "Núcleo",
+      "billable": false
+    },
+    {
+      "key": "jornada",
+      "name": "Jornada",
+      "billable": true
+    },
+    {
+      "key": "rh",
+      "name": "RH básico",
+      "billable": false
+    },
+    {
+      "key": "nomina",
+      "name": "Nómina",
+      "billable": true
+    },
+    {
+      "key": "finanzas",
+      "name": "Finanzas",
+      "billable": true
+    },
+    {
+      "key": "reclutamiento",
+      "name": "Reclutamiento",
+      "billable": true
+    }
   ],
   "permissions": [
-    { "key": "core.empresa.editar", "label": "Editar los datos de la empresa" },
-    { "key": "core.empresa.suscripcion", "label": "Ver y cambiar el plan y los módulos contratados" },
-    { "key": "core.usuarios.gestionar", "label": "Dar de alta usuarios y asignar roles" },
-    { "key": "core.personal.ver", "label": "Ver colaboradores" },
-    { "key": "core.personal.gestionar", "label": "Dar de alta, editar y dar de baja colaboradores" },
-    { "key": "core.sitios.gestionar", "label": "Crear y editar obras y sucursales" },
-    { "key": "core.bitacora.ver", "label": "Consultar la bitácora de cambios" },
-    { "key": "jornada.checar", "label": "Registrar mi entrada y salida" },
-    { "key": "jornada.asistencia.ver", "label": "Ver la asistencia de toda la empresa" },
-    { "key": "jornada.asistencia.ver_asignadas", "label": "Ver la asistencia solo de las obras asignadas" },
-    { "key": "jornada.reportes.ver", "label": "Ver y descargar reportes de jornada" },
-    { "key": "jornada.correcciones.crear", "label": "Corregir checadas con motivo" },
-    { "key": "jornada.rostros.registrar", "label": "Tomar la foto de registro en persona" },
-    { "key": "jornada.rostros.restablecer", "label": "Borrar una foto de registro para tomarla de nuevo" },
-    { "key": "jornada.configurar", "label": "Cambiar los ajustes del módulo Jornada" },
-    { "key": "jornada.cadena.verificar", "label": "Verificar la integridad de los registros" }
+    {
+      "key": "core.empresa.editar",
+      "label": "Editar los datos de la empresa"
+    },
+    {
+      "key": "core.empresa.suscripcion",
+      "label": "Ver y cambiar el plan y los módulos contratados",
+      "readOnlyOk": true
+    },
+    {
+      "key": "core.usuarios.gestionar",
+      "label": "Dar de alta usuarios y asignar roles"
+    },
+    {
+      "key": "core.personal.ver",
+      "label": "Ver colaboradores",
+      "readOnlyOk": true
+    },
+    {
+      "key": "core.personal.gestionar",
+      "label": "Dar de alta, editar y dar de baja colaboradores"
+    },
+    {
+      "key": "core.sitios.gestionar",
+      "label": "Crear y editar obras y sucursales"
+    },
+    {
+      "key": "core.bitacora.ver",
+      "label": "Consultar la bitácora de cambios",
+      "readOnlyOk": true
+    },
+    {
+      "key": "jornada.checar",
+      "label": "Registrar mi entrada y salida"
+    },
+    {
+      "key": "jornada.asistencia.ver",
+      "label": "Ver la asistencia de toda la empresa",
+      "readOnlyOk": true
+    },
+    {
+      "key": "jornada.asistencia.ver_asignadas",
+      "label": "Ver la asistencia solo de las obras asignadas",
+      "readOnlyOk": true
+    },
+    {
+      "key": "jornada.reportes.ver",
+      "label": "Ver y descargar reportes de jornada",
+      "readOnlyOk": true
+    },
+    {
+      "key": "jornada.correcciones.crear",
+      "label": "Corregir checadas con motivo"
+    },
+    {
+      "key": "jornada.rostros.registrar",
+      "label": "Tomar la foto de registro en persona"
+    },
+    {
+      "key": "jornada.rostros.restablecer",
+      "label": "Borrar una foto de registro para tomarla de nuevo"
+    },
+    {
+      "key": "jornada.registros.propios",
+      "label": "Consultar y descargar mis registros de jornada",
+      "readOnlyOk": true
+    },
+    {
+      "key": "jornada.configurar",
+      "label": "Cambiar los ajustes del módulo Jornada"
+    },
+    {
+      "key": "jornada.cadena.verificar",
+      "label": "Verificar la integridad de los registros",
+      "readOnlyOk": true
+    },
+    {
+      "key": "rh.estructura.gestionar",
+      "label": "Crear áreas y puestos y asignar jefes"
+    },
+    {
+      "key": "rh.expediente.ver",
+      "label": "Ver expedientes y documentos del personal",
+      "readOnlyOk": true
+    },
+    {
+      "key": "rh.expediente.gestionar",
+      "label": "Editar expedientes y cargar documentos"
+    },
+    {
+      "key": "rh.ausencias.ver",
+      "label": "Ver vacaciones, permisos e incapacidades",
+      "readOnlyOk": true
+    },
+    {
+      "key": "rh.ausencias.aprobar",
+      "label": "Aprobar solicitudes y registrar incapacidades"
+    },
+    {
+      "key": "rh.portal.ver",
+      "label": "Ver mis datos, documentos y solicitudes",
+      "readOnlyOk": true
+    },
+    {
+      "key": "rh.portal.solicitar",
+      "label": "Pedir vacaciones y permisos y cargar mis documentos"
+    }
   ],
   "systemRoles": [
     {
@@ -50,20 +166,41 @@
         "jornada.rostros.registrar",
         "jornada.rostros.restablecer",
         "jornada.configurar",
-        "jornada.cadena.verificar"
+        "jornada.cadena.verificar",
+        "jornada.registros.propios",
+        "rh.estructura.gestionar",
+        "rh.expediente.ver",
+        "rh.expediente.gestionar",
+        "rh.ausencias.ver",
+        "rh.ausencias.aprobar",
+        "rh.portal.ver",
+        "rh.portal.solicitar"
       ]
     },
     {
       "key": "supervisor",
       "name": "Supervisor",
       "description": "Ve la asistencia de sus obras y toma fotos de registro",
-      "permissions": ["core.personal.ver", "jornada.asistencia.ver_asignadas", "jornada.reportes.ver", "jornada.rostros.registrar"]
+      "permissions": [
+        "core.personal.ver",
+        "jornada.asistencia.ver_asignadas",
+        "jornada.reportes.ver",
+        "jornada.rostros.registrar",
+        "rh.ausencias.ver",
+        "rh.portal.ver",
+        "rh.portal.solicitar"
+      ]
     },
     {
       "key": "worker",
       "name": "Colaborador",
       "description": "Registra su propia jornada",
-      "permissions": ["jornada.checar"]
+      "permissions": [
+        "jornada.checar",
+        "jornada.registros.propios",
+        "rh.portal.ver",
+        "rh.portal.solicitar"
+      ]
     }
   ]
 }

@@ -3,6 +3,7 @@ import { api, ApiError } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
 import { can } from '../../../lib/access';
 import type { Me } from '../../../types';
+import { Modal } from '../../../common';
 import { EnrollFace } from './EnrollFace';
 
 interface EmployeeRow {
@@ -17,7 +18,8 @@ interface EmployeeRow {
   face_enrolled_at: string | null;
 }
 
-interface Credentials {
+export interface Credentials {
+  employeeId: string;
   name: string;
   phone: string | null;
   code: string;
@@ -169,8 +171,8 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
                 <th>Núm.</th>
                 <th>Nombre</th>
                 <th>Obra habitual</th>
+                <th>Checa con</th>
                 <th>Foto de registro</th>
-                <th>Consentimiento</th>
                 <th><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
@@ -184,10 +186,18 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
                     {e.position && <div className="muted" style={{ fontSize: '0.85rem' }}>{e.position}</div>}
                   </td>
                   <td>{me.sites?.find((s) => s.id === e.default_site_id)?.name ?? 'La más cercana'}</td>
-                  <td>{e.face_enrolled_at ? <span className="chip go">Registrada</span> : <span className="chip warn">Pendiente</span>}</td>
-                  <td>{e.consent_confirmed_at ? <span className="chip go">Confirmado</span> : <span className="chip stop">Falta</span>}</td>
+                  <td>{e.consent_confirmed_at ? <span className="chip go">Selfie</span> : <span className="chip">PIN</span>}</td>
+                  <td>
+                    {!e.consent_confirmed_at ? (
+                      <span className="muted">No aplica</span>
+                    ) : e.face_enrolled_at ? (
+                      <span className="chip go">Registrada</span>
+                    ) : (
+                      <span className="chip warn">Pendiente</span>
+                    )}
+                  </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {!e.face_enrolled_at && e.active && canEnroll && (
+                    {!e.face_enrolled_at && e.consent_confirmed_at && e.active && canEnroll && (
                       <button className="btn small" onClick={() => setEnrolling(e)}>
                         Tomar foto
                       </button>
@@ -205,7 +215,7 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
                     {isManager && e.active && (
                       <button
                         className="btn small quiet"
-                        onClick={() => setCreds({ name: e.full_name, phone: e.phone, code: company.code, number: e.employee_number })}
+                        onClick={() => setCreds({ employeeId: e.id, name: e.full_name, phone: e.phone, code: company.code, number: e.employee_number })}
                       >
                         Enviar acceso
                       </button>
@@ -227,7 +237,6 @@ function NewEmployee({ me, onClose, onCreated }: { me: Me; onClose: () => void; 
   const [position, setPosition] = useState('');
   const [phone, setPhone] = useState('');
   const [site, setSite] = useState('');
-  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -236,7 +245,7 @@ function NewEmployee({ me, onClose, onCreated }: { me: Me; onClose: () => void; 
     setBusy(true);
     setError(null);
     try {
-      await api('/api/core/members', {
+      const res = await api<{ employee: { id: string } }>('/api/core/members', {
         body: {
           company_id: me.company!.id,
           employee_number: number,
@@ -244,10 +253,9 @@ function NewEmployee({ me, onClose, onCreated }: { me: Me; onClose: () => void; 
           position,
           phone,
           default_site_id: site || null,
-          consent_confirmed: consent,
         },
       });
-      onCreated({ name, phone: phone || null, code: me.company!.code, number });
+      onCreated({ employeeId: res.employee.id, name, phone: phone || null, code: me.company!.code, number });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo dar de alta.');
     } finally {
@@ -287,13 +295,10 @@ function NewEmployee({ me, onClose, onCreated }: { me: Me; onClose: () => void; 
           </select>
         </label>
       </div>
-      <label className="check">
-        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-        <span>
-          Confirmo que la empresa cuenta con el consentimiento por escrito de este colaborador para usar su foto y ubicación al registrar
-          su jornada.
-        </span>
-      </label>
+      <p className="muted" style={{ margin: 0 }}>
+        El colaborador firma en su app el aviso de privacidad, el acuerdo de registro de jornada y, si quiere, el uso de su rostro. Si no
+        lo autoriza, checa con su PIN.
+      </p>
       {error && <div className="notice error">{error}</div>}
       <div className="toolbar">
         <button className="btn solid" type="submit" disabled={busy}>
@@ -326,7 +331,6 @@ function EditEmployee({
   const [position, setPosition] = useState(employee.position ?? '');
   const [phone, setPhone] = useState(employee.phone ?? '');
   const [site, setSite] = useState(employee.default_site_id ?? '');
-  const [consent, setConsent] = useState(Boolean(employee.consent_confirmed_at));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -339,9 +343,6 @@ function EditEmployee({
         method: 'PATCH',
         body: { employee_number: number, full_name: name, position, phone, default_site_id: site || null },
       });
-      if (consent !== Boolean(employee.consent_confirmed_at)) {
-        await api(`/api/jornada/employees/${employee.id}/consent`, { method: 'PUT', body: { confirmed: consent } });
-      }
       onSaved();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudieron guardar los cambios.');
@@ -403,13 +404,7 @@ function EditEmployee({
             El colaborador entrará con el nuevo número. Avísale y, si quieres, reenvíale su acceso después de guardar.
           </div>
         )}
-        <label className="check">
-          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-          <span>
-            Confirmo que la empresa cuenta con el consentimiento por escrito de este colaborador para usar su foto y ubicación al registrar
-            su jornada.
-          </span>
-        </label>
+        <AccessStatus employeeId={employee.id} onChanged={onSaved} />
         {error && <div className="notice error">{error}</div>}
         <div className="toolbar">
           <button className="btn solid" type="submit" disabled={busy}>
@@ -440,15 +435,28 @@ function EditEmployee({
   );
 }
 
-function CredentialCard({ creds, onClose }: { creds: Credentials; onClose: () => void }) {
+/** Código de activación + mensaje para que el colaborador entre por primera vez (o restablezca su PIN). */
+export function CredentialCard({ creds, onClose }: { creds: Credentials; onClose: () => void }) {
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
+  const [activation, setActivation] = useState<{ code: string; expires_at: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<{ code: string; expires_at: string }>(`/api/core/employees/${creds.employeeId}/activation`, { method: 'POST' })
+      .then(setActivation)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'No se pudo generar el código de activación.'));
+  }, [creds.employeeId]);
+
   const url = window.location.origin;
-  const message =
-    `Hola ${creds.name.split(' ')[0]}, este es tu acceso a Korporia para checar tu entrada y salida:\n` +
-    `${url}\n\nCódigo de empresa: ${creds.code}\nNúmero de empleado: ${creds.number}\n\n` +
-    `Ábrelo en Chrome y elige "Agregar a pantalla principal" para tenerlo como app.`;
+  const expires = activation ? new Date(activation.expires_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) : '';
+  const message = activation
+    ? `Hola ${creds.name.split(' ')[0]}, este es tu acceso a Korporia:\n${url}\n\n` +
+      `Código de empresa: ${creds.code}\nNúmero de empleado: ${creds.number}\nCódigo de activación: ${activation.code} (vence el ${expires})\n\n` +
+      `La primera vez, escribe el código de activación y crea tu PIN de 4 números. No se lo compartas a nadie.\n` +
+      `Ábrelo en Chrome y elige "Agregar a pantalla principal" para tenerlo como app.`
+    : '';
   const phone = creds.phone?.replace(/\D/g, '');
-  const wa = phone ? `https://wa.me/${phone.length === 10 ? `52${phone}` : phone}?text=${encodeURIComponent(message)}` : null;
+  const wa = phone && message ? `https://wa.me/${phone.length === 10 ? `52${phone}` : phone}?text=${encodeURIComponent(message)}` : null;
 
   async function copy() {
     try {
@@ -465,11 +473,13 @@ function CredentialCard({ creds, onClose }: { creds: Credentials; onClose: () =>
       <div className="sheet" style={{ width: 'min(100%, 460px)' }} onClick={(e) => e.stopPropagation()}>
         <h2 id="creds-title">Acceso de {creds.name}</h2>
         <p className="muted">
-          Korporia no envía el mensaje por sí sola: ábrelo en WhatsApp o cópialo y mándalo tú. Antes de su primera checada, tómale la foto
-          de registro con el botón Tomar foto.
+          Korporia no envía el mensaje por sí sola: ábrelo en WhatsApp o cópialo y mándalo tú. El código sirve una vez y vence en 7 días;
+          si el colaborador olvida su PIN, genera uno nuevo desde aquí.
         </p>
-        <pre className="message-preview">{message}</pre>
-        {!wa && (
+        {error && <div className="notice error">{error}</div>}
+        {!activation && !error && <p className="muted">Generando código…</p>}
+        {activation && <pre className="message-preview">{message}</pre>}
+        {activation && !wa && (
           <div className="notice warn">Este colaborador no tiene celular registrado. Copia el mensaje y envíaselo por el medio que prefieras.</div>
         )}
         {copied === 'ok' && <div className="notice ok">Mensaje copiado. Pégalo en WhatsApp o en un SMS.</div>}
@@ -480,14 +490,149 @@ function CredentialCard({ creds, onClose }: { creds: Credentials; onClose: () =>
               Abrir en WhatsApp
             </a>
           )}
-          <button className={`btn ${wa ? '' : 'solid'}`} onClick={() => void copy()}>
-            Copiar mensaje
-          </button>
+          {activation && (
+            <button className={`btn ${wa ? '' : 'solid'}`} onClick={() => void copy()}>
+              Copiar mensaje
+            </button>
+          )}
           <button className="btn quiet" onClick={onClose}>
             Cerrar
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+const DOC_LABEL: Record<string, string> = {
+  aviso_trabajadores: 'Aviso de privacidad',
+  acuerdo_jornada: 'Acuerdo de registro de jornada',
+  biometria: 'Uso de su rostro',
+};
+const CHOICE_LABEL: Record<string, string> = { acepto: 'Aceptó', autorizo: 'Autorizó', no_autorizo: 'No autorizó', retiro: 'Retiró' };
+
+interface AccessInfo {
+  hasPin: boolean;
+  activationPending: boolean;
+  locked: boolean;
+  pending: string[];
+  biometric: string | null;
+  history: { document: string; version: string; choice: string; method: string; signed_at: string }[];
+}
+
+/** Acceso (PIN) y firmas del colaborador; permite registrar el formato impreso firmado a mano. */
+function AccessStatus({ employeeId, onChanged }: { employeeId: string; onChanged: () => void }) {
+  const [info, setInfo] = useState<AccessInfo | null>(null);
+  const [printed, setPrinted] = useState(false);
+  const load = useCallback(() => {
+    api<AccessInfo>(`/api/core/employees/${employeeId}/access`).then(setInfo).catch(() => setInfo(null));
+  }, [employeeId]);
+  useEffect(load, [load]);
+  if (!info) return null;
+  const latest = new Map<string, AccessInfo['history'][number]>();
+  for (const h of info.history) if (!latest.has(h.document)) latest.set(h.document, h);
+  return (
+    <section className="stack" style={{ gap: 8 }}>
+      <h3 style={{ margin: 0 }}>Acceso y firmas</h3>
+      <p className="muted" style={{ margin: 0 }}>
+        {info.locked
+          ? 'Bloqueado por intentos fallidos (15 min).'
+          : info.hasPin
+            ? 'Ya activó su acceso con PIN.'
+            : info.activationPending
+              ? 'Tiene un código de activación vigente; aún no entra.'
+              : 'Aún no activa su acceso. Envíale su código desde "Enviar acceso".'}
+      </p>
+      <div className="list">
+        {Object.entries(DOC_LABEL).map(([key, label]) => {
+          const h = latest.get(key);
+          const pending = info.pending.includes(key);
+          return (
+            <div className="row" key={key}>
+              <div className="grow">
+                <div>{label}</div>
+                <div className="sub">
+                  {h ? `${CHOICE_LABEL[h.choice] ?? h.choice} el ${new Date(h.signed_at).toLocaleDateString('es-MX')} · ${h.method === 'pin' ? 'en la app' : 'formato impreso'}` : 'Sin firma'}
+                  {h && pending ? ' · hay una versión nueva por firmar' : ''}
+                </div>
+              </div>
+              {pending ? <span className="chip warn">Pendiente</span> : <span className="chip go">Al día</span>}
+            </div>
+          );
+        })}
+      </div>
+      <button type="button" className="btn small" onClick={() => setPrinted(true)}>
+        Registrar formato impreso firmado
+      </button>
+      {printed && (
+        <PrintedFormat
+          employeeId={employeeId}
+          onClose={() => setPrinted(false)}
+          onSaved={() => {
+            setPrinted(false);
+            load();
+            onChanged();
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+/** Versión impresa (firma autógrafa): el administrador sube la foto del formato y marca lo que firmó. */
+function PrintedFormat({ employeeId, onClose, onSaved }: { employeeId: string; onClose: () => void; onSaved: () => void }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [aviso, setAviso] = useState(true);
+  const [acuerdo, setAcuerdo] = useState(true);
+  const [bio, setBio] = useState<'' | 'autorizo' | 'no_autorizo'>('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function save() {
+    if (!file) return setError('Toma o adjunta la foto del formato firmado.');
+    setBusy(true);
+    setError(null);
+    const form = new FormData();
+    form.set('file', file);
+    if (aviso) form.set('aviso', '1');
+    if (acuerdo) form.set('acuerdo', '1');
+    if (bio) form.set('biometric', bio);
+    try {
+      await api(`/api/core/employees/${employeeId}/printed`, { body: form, timeoutMs: 60000 });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo guardar.');
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal title="Formato impreso firmado" onClose={onClose}>
+      <div className="stack">
+        <p className="muted" style={{ margin: 0 }}>Conserva el original. La foto queda en el expediente del colaborador como evidencia.</p>
+        <label className="field">
+          Foto o PDF del formato
+          <input type="file" accept="image/*,application/pdf" capture="environment" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={aviso} onChange={(e) => setAviso(e.target.checked)} />
+          <span>Firmó de recibido el aviso de privacidad</span>
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={acuerdo} onChange={(e) => setAcuerdo(e.target.checked)} />
+          <span>Firmó el acuerdo de registro electrónico de jornada</span>
+        </label>
+        <label className="field">
+          Uso de su rostro
+          <select value={bio} onChange={(e) => setBio(e.target.value as typeof bio)}>
+            <option value="">No viene en el formato</option>
+            <option value="autorizo">Marcó «Sí autorizo»</option>
+            <option value="no_autorizo">Marcó «No autorizo»</option>
+          </select>
+        </label>
+        {error && <div className="notice error">{error}</div>}
+        <button className="btn solid block" disabled={busy} onClick={() => void save()}>
+          {busy ? 'Guardando…' : 'Guardar'}
+        </button>
+      </div>
+    </Modal>
   );
 }

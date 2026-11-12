@@ -134,7 +134,7 @@ await test('carga datos de prueba', async () => {
       ('${ids.owner}'), ('${ids.supervisor}'), ('${ids.worker1}'), ('${ids.worker2}'), ('${ids.ownerB}'), ('${ids.admin}'), ('${ids.newOwner}');
     insert into core.companies (id, name, code) values ('${ids.companyA}', 'Eléctrica Laguna', 'elaguna'), ('${ids.companyB}', 'Otra Empresa', 'otra');
     insert into core.subscriptions (company_id) values ('${ids.companyA}'), ('${ids.companyB}');
-    insert into core.company_modules (company_id, module_key) values ('${ids.companyA}', 'jornada');
+    insert into core.company_modules (company_id, module_key) values ('${ids.companyA}', 'jornada'), ('${ids.companyA}', 'rh');
     insert into core.memberships (company_id, user_id, role_id) values
       ('${ids.companyA}', '${ids.owner}', ${role('owner')}),
       ('${ids.companyA}', '${ids.admin}', ${role('admin')}),
@@ -460,6 +460,110 @@ await test('Korporia Starter guarda sus dos vigencias', async () => {
   );
   const { rows } = await db.query(`select plan, starter_clock_until < starter_hr_until as ok from core.subscriptions where company_id = $1`, [ids.companyB]);
   assert(rows[0].plan === 'starter' && rows[0].ok, 'vigencias del plan Starter');
+});
+
+
+// ---------------------------------------------------------------------
+// Planes con vigencia (Korporia Starter), acceso del trabajador y RH básico
+// ---------------------------------------------------------------------
+const canAll = (user, company, perms) =>
+  asUser(user, `select ${perms.map((p, i) => `core.can($1, '${p}') as p${i}`).join(', ')}`, [company]).then((r) => perms.map((_, i) => r.rows[0][`p${i}`]));
+
+await test('un módulo vencido queda en solo lectura: consultas sí, cambios no', async () => {
+  await db.query(`update core.company_modules set writable_until = now() - interval '1 day' where company_id = $1 and module_key = 'jornada'`, [ids.companyA]);
+  const [checar, corregir, reportes, propios, personal] = await canAll(ids.owner, ids.companyA, [
+    'jornada.checar', 'jornada.correcciones.crear', 'jornada.reportes.ver', 'jornada.registros.propios', 'core.personal.gestionar',
+  ]);
+  const access = await asService(`select writable from core.user_access($1)`, [ids.owner]);
+  await db.query(`update core.company_modules set writable_until = null where company_id = $1 and module_key = 'jornada'`, [ids.companyA]);
+  assert(!checar && !corregir, 'el checador debe quedar deshabilitado');
+  assert(reportes && propios, 'los registros siguen consultables y exportables');
+  assert(personal, 'el resto de la cuenta sigue editable');
+  assert(!access.rows[0].writable.includes('jornada') && access.rows[0].writable.includes('core'), `writable: ${access.rows[0].writable}`);
+});
+
+await test('la cuenta en solo lectura conserva consultas y la contratación', async () => {
+  await db.query(`update core.subscriptions set read_only_at = now() - interval '1 day' where company_id = $1`, [ids.companyA]);
+  const [gestionar, ver, suscripcion, expediente] = await canAll(ids.owner, ids.companyA, [
+    'core.personal.gestionar', 'core.personal.ver', 'core.empresa.suscripcion', 'rh.expediente.ver',
+  ]);
+  const site = await asUser(ids.owner, `update core.sites set name = 'X' where id = $1 returning id`, [ids.siteNorte]);
+  await db.query(`update core.subscriptions set read_only_at = null where company_id = $1`, [ids.companyA]);
+  assert(!gestionar && site.rows.length === 0, 'no se permiten cambios');
+  assert(ver && suscripcion && expediente, 'consulta y contratación siguen disponibles');
+});
+
+await test('una cuenta archivada pierde todo salvo la contratación', async () => {
+  await db.query(`update core.subscriptions set status = 'archived' where company_id = $1`, [ids.companyA]);
+  const [ver, suscripcion] = await canAll(ids.owner, ids.companyA, ['core.personal.ver', 'core.empresa.suscripcion']);
+  await db.query(`update core.subscriptions set status = 'trial' where company_id = $1`, [ids.companyA]);
+  assert(!ver && suscripcion, 'archivo sin acceso');
+});
+
+await test('las firmas del trabajador son inalterables y privadas', async () => {
+  await asService(
+    `insert into core.employee_acceptances (company_id, employee_id, document, version, choice, method) values
+       ($1, $2, 'aviso_trabajadores', '2026-11-06', 'acepto', 'pin'),
+       ($1, $2, 'biometria', '2026-11-03', 'no_autorizo', 'pin')`,
+    [ids.companyA, ids.emp1],
+  );
+  await expectError(db.query(`update core.employee_acceptances set choice = 'acepto'`), 'inalterables');
+  await expectError(db.query(`delete from core.employee_acceptances`), 'inalterables');
+  await expectError(
+    asService(`insert into core.employee_acceptances (company_id, employee_id, document, version, choice, method) values ($1, $2, 'acuerdo_jornada', 'v', 'autorizo', 'pin')`, [
+      ids.companyA,
+      ids.emp1,
+    ]),
+  );
+  const own = await asUser(ids.worker1, `select document from core.employee_acceptances`);
+  const other = await asUser(ids.worker2, `select document from core.employee_acceptances`);
+  assert(own.rows.length === 2 && other.rows.length === 0, 'cada trabajador ve solo sus firmas');
+});
+
+await test('nadie lee los PIN ni los códigos de activación desde la app', async () => {
+  await asService(`insert into core.employee_credentials (employee_id, company_id, pin_hash) values ($1, $2, 'x')`, [ids.emp1, ids.companyA]);
+  await expectError(asUser(ids.owner, `select pin_hash from core.employee_credentials`));
+  await expectError(asUser(ids.worker1, `select pin_hash from core.employee_credentials`));
+});
+
+await test('el expediente lo ve RH y cada trabajador solo el suyo', async () => {
+  await asService(`insert into rh.departments (id, company_id, name) values ('40000000-0000-0000-0000-000000000001', $1, 'Obra')`, [ids.companyA]);
+  await asService(
+    `insert into rh.employee_profiles (employee_id, company_id, department_id, nss)
+     values ($2, $1, '40000000-0000-0000-0000-000000000001', '12345678901'), ($3, $1, null, null)`,
+    [ids.companyA, ids.emp1, ids.emp2],
+  );
+  await asService(
+    `insert into rh.leave_requests (company_id, employee_id, kind, start_date, end_date, days) values ($1, $2, 'vacaciones', '2027-01-04', '2027-01-08', 5)`,
+    [ids.companyA, ids.emp1],
+  );
+  const admin = await asUser(ids.admin, `select employee_id from rh.employee_profiles`);
+  const worker = await asUser(ids.worker2, `select employee_id from rh.employee_profiles`);
+  const sup = await asUser(ids.supervisor, `select employee_id from rh.employee_profiles`);
+  const leaves = await asUser(ids.supervisor, `select id from rh.leave_requests`);
+  const otherLeaves = await asUser(ids.worker2, `select id from rh.leave_requests`);
+  assert(admin.rows.length === 2, 'RH ve todos los expedientes');
+  assert(worker.rows.length === 1 && worker.rows[0].employee_id === ids.emp2, 'el trabajador ve solo el suyo');
+  assert(sup.rows.length === 0, 'el supervisor no ve expedientes');
+  assert(leaves.rows.length === 1 && otherLeaves.rows.length === 0, 'ausencias: el supervisor las ve, otro trabajador no');
+  await expectError(asUser(ids.admin, `insert into rh.departments (company_id, name) values ($1, 'X')`, [ids.companyA]));
+  await expectError(asService(`insert into rh.employee_profiles (employee_id, company_id, nss) values ($1, $2, '123')`, [ids.emp1, ids.companyB]));
+});
+
+await test('las tareas diarias archivan cuentas vencidas e inscriben a la lista de espera', async () => {
+  await db.query(`update auth.users set email = 'duena@empresa-b.com' where id = $1`, [ids.ownerB]);
+  await db.query(
+    `update core.subscriptions set plan = 'starter', starter_clock_until = now() - interval '1 day', read_only_at = now() - interval '91 days' where company_id = $1`,
+    [ids.companyB],
+  );
+  const { rows } = await asService(`select core.run_daily_jobs('2026-11-06') as r`);
+  const sub = await db.query(`select status from core.subscriptions where company_id = $1`, [ids.companyB]);
+  const wl = await db.query(`select source, company_id from core.waitlist where email = 'duena@empresa-b.com'`);
+  assert(rows[0].r.archived >= 1 && sub.rows[0].status === 'archived', 'la cuenta vencida se archiva');
+  assert(wl.rows.length === 1 && wl.rows[0].source === 'starter_dia90', 'el dueño queda en la lista de espera');
+  const again = await asService(`select core.run_daily_jobs('2026-11-06') as r`);
+  assert(again.rows[0].r.waitlisted === 0, 'no se duplica');
+  await expectError(asUser(ids.owner, `select core.run_daily_jobs('x')`));
 });
 
 console.log(`\n${passed} pruebas correctas, ${failed} fallidas\n`);

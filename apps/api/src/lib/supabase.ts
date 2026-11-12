@@ -26,6 +26,7 @@ export function userClient(env: Env, accessToken: string): SupabaseClient {
  */
 export const coreDb = (client: SupabaseClient) => client.schema('core');
 export const jornadaDb = (client: SupabaseClient) => client.schema('jornada');
+export const rhDb = (client: SupabaseClient) => client.schema('rh');
 
 /** Registra una acción en la bitácora general. Nunca interrumpe la operación si falla. */
 export async function audit(

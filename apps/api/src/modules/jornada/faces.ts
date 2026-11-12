@@ -20,6 +20,12 @@ faces.put('/:id/consent', async (c) => {
   requirePermission(auth, employee.company_id, 'core.personal.gestionar');
   const { confirmed } = await c.req.json<{ confirmed?: unknown }>();
   if (typeof confirmed !== 'boolean') throw new HTTPException(400, { message: 'Dato inválido.' });
+  // El consentimiento lo da el trabajador (en su app o en el formato impreso que sube el administrador)
+  if (confirmed) {
+    throw new HTTPException(400, {
+      message: 'El consentimiento lo firma el colaborador en su app o en el formato impreso. Sube el formato firmado desde su expediente.',
+    });
+  }
 
   const now = new Date().toISOString();
   const { error } = await jornadaDb(admin)
@@ -72,6 +78,14 @@ faces.post('/:id/face', async (c) => {
   if (!employee) throw new HTTPException(404, { message: 'Colaborador no encontrado.' });
   requirePermission(auth, employee.company_id, 'jornada.rostros.registrar');
   if (!employee.active) throw new HTTPException(400, { message: 'El colaborador está dado de baja.' });
+
+  // Solo con el consentimiento biométrico del trabajador (firmado en la app o en el formato impreso)
+  const { data: own } = await db.from('employee_settings').select('consent_confirmed_at').eq('employee_id', employee.id).maybeSingle();
+  if (!own?.consent_confirmed_at) {
+    throw new HTTPException(409, {
+      message: 'El colaborador no ha autorizado el uso de su rostro. Checará con su PIN; si quiere usar selfie, puede autorizarlo desde "Mi privacidad" en su app.',
+    });
+  }
 
   const { data: existing } = await db.from('faces').select('employee_id').eq('employee_id', employee.id).maybeSingle();
   if (existing) {

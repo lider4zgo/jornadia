@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MODULES, PERMISSIONS, SYSTEM_ROLES, canGrantRole, companyCodeFromName, isKnownPermission, moduleOf, workerEmail } from './index';
+import { MODULES, PERMISSIONS, SYSTEM_ROLES, canGrantRole, companyCodeFromName, isKnownPermission, moduleOf, READ_ONLY_OK, workerEmail } from './index';
 
 const role = (key: string) => SYSTEM_ROLES.find((r) => r.key === key)!.permissions;
 
@@ -17,8 +17,15 @@ describe('catálogo de permisos', () => {
     expect(role('owner').sort()).toEqual(PERMISSIONS.map((p) => p.key).sort());
   });
 
-  it('el colaborador solo puede checar', () => {
-    expect(role('worker')).toEqual(['jornada.checar']);
+  it('el colaborador solo checa y usa su propio portal', () => {
+    expect(role('worker').sort()).toEqual(['jornada.checar', 'jornada.registros.propios', 'rh.portal.solicitar', 'rh.portal.ver']);
+  });
+
+  it('las consultas siguen disponibles en solo lectura; los cambios no', () => {
+    expect(READ_ONLY_OK.has('jornada.registros.propios')).toBe(true);
+    expect(READ_ONLY_OK.has('jornada.reportes.ver')).toBe(true);
+    expect(READ_ONLY_OK.has('jornada.checar')).toBe(false);
+    expect(READ_ONLY_OK.has('rh.portal.solicitar')).toBe(false);
   });
 });
 

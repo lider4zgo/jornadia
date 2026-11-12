@@ -18,6 +18,8 @@ export interface CompanyAccess {
   role: string;
   permissions: Set<string>;
   modules: Set<string>;
+  /** Módulos que hoy aceptan cambios ('core' = la cuenta); los demás están en solo lectura por el plan */
+  writable: Set<string>;
   status: CompanyStatus | null;
 }
 

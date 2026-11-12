@@ -731,3 +731,28 @@ tr:last-child td { border-bottom: 0; }
 }
 
 .btn.danger { color: var(--stop); }
+
+/* Documentos que firma el trabajador */
+.eyebrow { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--action); }
+.doc-text h3 { font-size: 1.15rem; margin: 0 0 8px; }
+.doc-text h4 { font-size: 1rem; margin: 14px 0 6px; }
+.doc-text p, .doc-text li { line-height: 1.55; margin: 0 0 8px; }
+.doc-text ul { padding-left: 20px; margin: 0 0 8px; }
+.plan-banner { margin: 10px auto 0; max-width: 1100px; width: calc(100% - 32px); }
+
+/* RH básico */
+.link-button { background: none; border: 0; padding: 0; font: inherit; color: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+.link-button:hover { color: var(--action); text-decoration: underline; }
+.org-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.org-tree, .org-tree ul { list-style: none; margin: 0; padding-left: 0; }
+.org-tree ul { padding-left: 22px; border-left: 2px solid var(--line, #E3E6F0); margin-left: 10px; }
+.org-tree li { margin: 8px 0; }
+.org-node { display: inline-flex; flex-direction: column; padding: 8px 12px; border-radius: 10px; background: var(--mist, #F4F5FA); border: 1px solid var(--line, #E3E6F0); }
+.org-node span { font-size: 0.85rem; color: var(--slate, #4A5470); }
+
+/* En celular, los módulos van en su propia fila bajo el nombre de la empresa */
+@media (max-width: 560px) {
+  .topbar { flex-wrap: wrap; row-gap: 8px; }
+  .topbar .module-nav { order: 10; flex-basis: 100%; }
+  .topbar .module-nav button { flex: 1; }
+}

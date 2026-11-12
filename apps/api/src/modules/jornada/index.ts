@@ -7,11 +7,9 @@ import { faces } from './faces';
 import { files } from './files';
 import { punches } from './punches';
 import { reports } from './reports';
-import { workerAuth } from './worker-auth';
 
 /** Korporia Jornada: registro electrónico de jornada con selfie, geocercas y modo sin conexión. */
 const routes = new Hono<AppEnv>();
-routes.route('/auth', workerAuth);
 routes.route('/punches', punches);
 routes.route('/reports', reports);
 routes.route('/files', files);
@@ -50,17 +48,9 @@ export const jornadaModule: ApiModule = {
     };
   },
 
-  /** Al dar de alta un colaborador se registra si la empresa declaró el consentimiento biométrico. */
-  async onEmployeeCreated(env, { actorId, employeeId, companyId, body }) {
-    const consent = body.consent_confirmed === true;
-    const { error } = await jornadaDb(adminClient(env))
-      .from('employee_settings')
-      .insert({
-        employee_id: employeeId,
-        company_id: companyId,
-        consent_confirmed_at: consent ? new Date().toISOString() : null,
-        consent_confirmed_by: consent ? actorId : null,
-      });
+  /** Ajustes del colaborador en Jornada. El consentimiento biométrico lo firma él después. */
+  async onEmployeeCreated(env, { employeeId, companyId }) {
+    const { error } = await jornadaDb(adminClient(env)).from('employee_settings').insert({ employee_id: employeeId, company_id: companyId });
     if (error) throw error;
   },
 };

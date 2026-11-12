@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { serverNow } from './lib/clock';
 
 const K_COLORS = {
@@ -91,5 +91,80 @@ export function Spinner({ label }: { label: string }) {
       <Mark className="mark" />
       <p className="muted">{label}</p>
     </div>
+  );
+}
+
+/** Ventana sobre la pantalla (formularios cortos). Se cierra con Esc o tocando fuera. */
+export function Modal({ title, onClose, children, width = 520 }: { title: string; onClose: () => void; children: ReactNode; width?: number }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="lightbox" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
+      <div className="sheet" style={{ width: `min(100%, ${width}px)`, maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <h2>{title}</h2>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Pide el PIN de 4 dígitos del trabajador (para checar sin biometría o firmar). */
+export function PinPrompt({
+  title,
+  hint,
+  confirmLabel = 'Confirmar',
+  busy = false,
+  error,
+  onSubmit,
+  onCancel,
+}: {
+  title: string;
+  hint?: ReactNode;
+  confirmLabel?: string;
+  busy?: boolean;
+  error?: string | null;
+  onSubmit: (pin: string) => void;
+  onCancel: () => void;
+}) {
+  const [pin, setPin] = useState('');
+  return (
+    <Modal title={title} onClose={onCancel} width={380}>
+      <form
+        className="stack"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (pin.length === 4) onSubmit(pin);
+        }}
+      >
+        {hint && <p className="muted" style={{ margin: 0 }}>{hint}</p>}
+        <label className="field">
+          Tu PIN
+          <input
+            type="password"
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            inputMode="numeric"
+            autoComplete="current-password"
+            autoFocus
+            required
+            style={{ letterSpacing: '0.4em', fontSize: '1.5rem', textAlign: 'center' }}
+          />
+        </label>
+        {error && (
+          <div className="notice error" role="alert">
+            {error}
+          </div>
+        )}
+        <button className="btn solid block" type="submit" disabled={busy || pin.length < 4}>
+          {busy ? 'Un momento…' : confirmLabel}
+        </button>
+        <button className="btn quiet block" type="button" onClick={onCancel}>
+          Cancelar
+        </button>
+      </form>
+    </Modal>
   );
 }

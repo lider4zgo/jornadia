@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { can } from '../../lib/access';
+import { can, writable } from '../../lib/access';
+import { MyPrivacy } from '../../core/WorkerDocs';
 import { navigate } from '../../lib/router';
 import type { ModuleProps } from '..';
 import { Panel } from './admin/Panel';
@@ -28,30 +29,25 @@ function Worker({ me, section, reload }: ModuleProps) {
       </div>
     );
   }
-  if (!me.jornada?.face) {
-    return (
-      <div className="content">
-        <div className="notice warn">
-          <strong>Falta tu foto de registro</strong>
-          Pide a tu supervisor que te tome la foto desde su celular. Después podrás checar desde aquí.
-        </div>
-        <button className="btn block" onClick={() => void reload()}>
-          Ya me la tomaron
-        </button>
-      </div>
-    );
-  }
-
-  const tab = section === 'historial' ? 'historial' : 'checar';
+  // Si el checador del plan terminó, el trabajador conserva sus registros y su privacidad
+  const canPunch = writable(me, 'jornada') && can(me, 'jornada.checar');
+  const tab = section === 'historial' || !canPunch ? (section === 'privacidad' ? 'privacidad' : 'historial') : section === 'privacidad' ? 'privacidad' : 'checar';
   return (
     <>
-      {tab === 'checar' ? <Checar me={me} onPunched={() => void reload()} /> : <History me={me} />}
+      {tab === 'checar' && <Checar me={me} onPunched={() => void reload()} />}
+      {tab === 'historial' && <History me={me} />}
+      {tab === 'privacidad' && <MyPrivacy onChanged={() => void reload()} />}
       <nav className="tabbar" aria-label="Navegación">
-        <button aria-current={tab === 'checar' ? 'page' : undefined} onClick={() => navigate('/jornada')}>
-          Checar
-        </button>
+        {canPunch && (
+          <button aria-current={tab === 'checar' ? 'page' : undefined} onClick={() => navigate('/jornada')}>
+            Checar
+          </button>
+        )}
         <button aria-current={tab === 'historial' ? 'page' : undefined} onClick={() => navigate('/jornada/historial')}>
-          Mi historial
+          Mis registros
+        </button>
+        <button aria-current={tab === 'privacidad' ? 'page' : undefined} onClick={() => navigate('/jornada/privacidad')}>
+          Mi privacidad
         </button>
       </nav>
     </>

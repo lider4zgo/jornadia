@@ -7,7 +7,7 @@ import catalog from './permissions.json';
  * datos y `supabase/tests/run.mjs` verifica que ambos coincidan.
  */
 
-export type ModuleKey = 'core' | 'jornada' | 'nomina' | 'finanzas' | 'reclutamiento';
+export type ModuleKey = 'core' | 'jornada' | 'rh' | 'nomina' | 'finanzas' | 'reclutamiento';
 export type SystemRoleKey = 'owner' | 'admin' | 'supervisor' | 'worker';
 
 export interface ModuleInfo {
@@ -19,6 +19,8 @@ export interface ModuleInfo {
 export interface PermissionInfo {
   key: string;
   label: string;
+  /** Sigue disponible cuando el módulo o la cuenta están en solo lectura (consultas y exportación) */
+  readOnlyOk?: boolean;
 }
 
 export interface SystemRole {
@@ -32,6 +34,9 @@ export const MODULES = catalog.modules as ModuleInfo[];
 export const PERMISSIONS = catalog.permissions as PermissionInfo[];
 
 const ALL_KEYS = PERMISSIONS.map((p) => p.key);
+
+/** Permisos de consulta: funcionan aunque el plan haya dejado el módulo en solo lectura. */
+export const READ_ONLY_OK = new Set(PERMISSIONS.filter((p) => p.readOnlyOk).map((p) => p.key));
 
 export const SYSTEM_ROLES: SystemRole[] = catalog.systemRoles.map((r) => ({
   key: r.key as SystemRoleKey,

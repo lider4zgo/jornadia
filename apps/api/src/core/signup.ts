@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { companyCodeFromName, LEGAL_VERSIONS, STARTER } from '@korporia/core';
+import { companyCodeFromName, LEGAL_VERSIONS, STARTER, STARTER_LIMITS } from '@korporia/core';
 import type { AppEnv } from '../env';
 import { invalidateAccess, requireAuth } from '../lib/auth';
 import { EMAIL_RE, str } from '../lib/input';
@@ -78,7 +78,7 @@ signup.post('/complete', requireAuth, async (c) => {
       p_owner: auth.userId,
       p_employee_limit: STARTER.maxEmployees,
       p_trial_days: STARTER.clockDays,
-      p_modules: ['jornada'],
+      p_modules: ['jornada', 'rh'],
     });
     if (!error && data) companyId = data as string;
     else if (error?.code !== '23505') {
@@ -105,8 +105,16 @@ signup.post('/complete', requireAuth, async (c) => {
         starter_clock_until: clockUntil.toISOString(),
         starter_hr_until: hrUntil.toISOString(),
         trial_ends_at: clockUntil.toISOString(),
+        // Al mes 6 toda la cuenta pasa a solo lectura (90 días con exportación, luego archivo)
+        read_only_at: hrUntil.toISOString(),
+        admin_limit: STARTER_LIMITS.admins,
+        doc_mb_per_employee: STARTER_LIMITS.docMbPerEmployee,
+        doc_max_file_mb: STARTER_LIMITS.docMaxFileMb,
       })
       .eq('company_id', companyId),
+    // Checador hasta el día 90 y RH básico hasta el mes 6; después, solo lectura
+    core.from('company_modules').update({ writable_until: clockUntil.toISOString() }).eq('company_id', companyId).eq('module_key', 'jornada'),
+    core.from('company_modules').update({ writable_until: hrUntil.toISOString() }).eq('company_id', companyId).eq('module_key', 'rh'),
     core.from('companies').update({ declared_employees: employees, industry: industry || null, state: state || null }).eq('id', companyId),
     core.from('legal_acceptances').insert([
       { company_id: companyId, user_id: auth.userId, document: 'terminos', version: LEGAL_VERSIONS.terminos, ip, user_agent: userAgent },

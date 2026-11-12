@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { MODULES } from '@korporia/core';
 import type { AppEnv } from '../env';
-import { requireAuth } from '../lib/auth';
-import { adminClient, coreDb } from '../lib/supabase';
+import { invalidateAccess, requireAuth, requirePermission } from '../lib/auth';
+import { adminClient, audit, coreDb } from '../lib/supabase';
 import { EMAIL_RE, str } from '../lib/input';
 
 export const companies = new Hono<AppEnv>();
@@ -56,7 +56,8 @@ companies.post('/', async (c) => {
     p_owner: created.data.user.id,
     p_employee_limit: employeeLimit,
     p_trial_days: trialDays,
-    p_modules: modules,
+    // RH básico va incluido en todos los planes
+    p_modules: [...modules, 'rh'],
   });
   if (error || !companyId) {
     await admin.auth.admin.deleteUser(created.data.user.id);
@@ -66,4 +67,111 @@ companies.post('/', async (c) => {
   }
 
   return c.json({ company: { id: companyId, name, code, modules } }, 201);
+});
+
+/**
+ * Plataforma (Erik): empresas cliente con su plan, para dar de alta a mano a quien
+ * contrata Jornada mientras no hay cobro con Stripe.
+ * GET /api/core/companies
+ */
+companies.get('/', async (c) => {
+  const auth = c.get('auth');
+  if (!auth.isPlatformAdmin) throw new HTTPException(403, { message: 'Solo el administrador de la plataforma.' });
+  const core = coreDb(adminClient(c.env));
+  const [{ data: list }, { data: subs }, { data: counts }] = await Promise.all([
+    core.from('companies').select('id, name, code, created_at, declared_employees').order('created_at', { ascending: false }).limit(500),
+    core.from('subscriptions').select('company_id, status, plan, employee_limit, starter_clock_until, starter_hr_until, read_only_at, current_period_end'),
+    core.from('employees').select('company_id').eq('active', true),
+  ]);
+  const subBy = new Map((subs ?? []).map((s) => [s.company_id, s]));
+  const active = new Map<string, number>();
+  for (const e of counts ?? []) active.set(e.company_id, (active.get(e.company_id) ?? 0) + 1);
+  return c.json({
+    companies: (list ?? []).map((co) => ({ ...co, subscription: subBy.get(co.id) ?? null, active_employees: active.get(co.id) ?? 0 })),
+  });
+});
+
+/**
+ * Plataforma: cambia el plan de una empresa (cobro manual hasta que haya Stripe).
+ * PATCH /api/core/companies/:id/plan { plan: 'jornada', employee_limit, period_end?: 'AAAA-MM-DD' } o { status: 'suspended'|'active' }
+ *
+ * Al pasar a Jornada se quitan las vigencias de Korporia Starter: el checador y RH básico
+ * vuelven a aceptar cambios y la cuenta deja de ir a solo lectura.
+ */
+companies.patch('/:id/plan', async (c) => {
+  const auth = c.get('auth');
+  if (!auth.isPlatformAdmin) throw new HTTPException(403, { message: 'Solo el administrador de la plataforma.' });
+  const id = c.req.param('id');
+  const b = await c.req.json<Record<string, unknown>>();
+  const core = coreDb(adminClient(c.env));
+  const { data: current } = await core.from('subscriptions').select('*').eq('company_id', id).maybeSingle();
+  if (!current) throw new HTTPException(404, { message: 'Empresa no encontrada.' });
+
+  const patch: Record<string, unknown> = {};
+  if (b.plan !== undefined) {
+    if (b.plan !== 'jornada') throw new HTTPException(400, { message: 'Por ahora solo se contrata Jornada.' });
+    const limit = Number(b.employee_limit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 10000) throw new HTTPException(400, { message: 'Número de colaboradores inválido.' });
+    const periodEnd = typeof b.period_end === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.period_end) ? `${b.period_end}T23:59:59-06:00` : null;
+    Object.assign(patch, {
+      plan: 'jornada',
+      status: 'active',
+      employee_limit: limit,
+      current_period_end: periodEnd,
+      read_only_at: null,
+      admin_limit: null,
+      doc_mb_per_employee: null,
+    });
+    const { error } = await core.from('company_modules').update({ writable_until: null }).eq('company_id', id).in('module_key', ['jornada', 'rh']);
+    if (error) throw new HTTPException(500, { message: 'No se pudieron reactivar los módulos.' });
+  }
+  if (b.status === 'suspended' || b.status === 'active') patch.status = b.status;
+  if (Object.keys(patch).length === 0) throw new HTTPException(400, { message: 'Nada que cambiar.' });
+
+  const { data, error } = await core.from('subscriptions').update(patch).eq('company_id', id).select('*').single();
+  if (error) throw new HTTPException(500, { message: 'No se pudo cambiar el plan.' });
+
+  // Los permisos efectivos de todos sus usuarios cambian: se recargan en la siguiente llamada
+  const { data: users } = await core.from('memberships').select('user_id').eq('company_id', id);
+  for (const u of users ?? []) invalidateAccess(u.user_id);
+  await audit(c.env, { company_id: id, actor_id: auth.userId, action: 'subscription.changed', entity: 'core.subscriptions', entity_id: id, details: { antes: current, despues: patch } });
+  return c.json({ subscription: data });
+});
+
+/**
+ * Datos de la empresa que se usan en el aviso de privacidad de sus trabajadores.
+ * GET /api/core/companies/:id/profile · PATCH { legal_name, address, privacy_email, privacy_phone }
+ */
+companies.get('/:id/profile', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  requirePermission(auth, id, 'core.personal.ver', 'core.empresa.editar');
+  const { data } = await coreDb(adminClient(c.env)).from('companies').select('id, name, code, legal_name, address, privacy_email, privacy_phone').eq('id', id).single();
+  return c.json({ company: data });
+});
+
+companies.patch('/:id/profile', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  requirePermission(auth, id, 'core.empresa.editar');
+  const b = await c.req.json<Record<string, unknown>>();
+  const patch: Record<string, unknown> = {};
+  if ('legal_name' in b) patch.legal_name = str(b.legal_name, 160) || null;
+  if ('address' in b) patch.address = str(b.address, 300) || null;
+  if ('privacy_email' in b) {
+    const e = str(b.privacy_email, 254).toLowerCase();
+    if (e && !EMAIL_RE.test(e)) throw new HTTPException(400, { message: 'Correo de privacidad inválido.' });
+    patch.privacy_email = e || null;
+  }
+  if ('privacy_phone' in b) patch.privacy_phone = str(b.privacy_phone, 20) || null;
+  if (!Object.keys(patch).length) throw new HTTPException(400, { message: 'Nada que guardar.' });
+  const { data, error } = await coreDb(adminClient(c.env))
+    .from('companies')
+    .update(patch)
+    .eq('id', id)
+    .select('id, name, code, legal_name, address, privacy_email, privacy_phone')
+    .single();
+  if (error) throw new HTTPException(500, { message: 'No se pudieron guardar los datos.' });
+  await audit(c.env, { company_id: id, actor_id: auth.userId, action: 'company.profile_updated', entity: 'core.companies', entity_id: id, details: patch });
+  return c.json({ company: data });
 });

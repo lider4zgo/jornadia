@@ -56,7 +56,7 @@ members.post('/', async (c) => {
 
   const [{ data: company }, { data: subscription }, { data: companyModules }] = await Promise.all([
     core.from('companies').select('id, code').eq('id', companyId).single(),
-    core.from('subscriptions').select('employee_limit').eq('company_id', companyId).single(),
+    core.from('subscriptions').select('employee_limit, admin_limit').eq('company_id', companyId).single(),
     core.from('company_modules').select('module_key').eq('company_id', companyId).eq('active', true),
   ]);
   if (!company || !subscription) throw new HTTPException(404, { message: 'Empresa no encontrada.' });
@@ -70,11 +70,29 @@ members.post('/', async (c) => {
     }
   }
 
+  // Usuarios de gestión (todos menos colaboradores): Korporia Starter permite solo 1 administrador
+  if (!isWorker && subscription.admin_limit) {
+    const { data: managers } = await core
+      .from('memberships')
+      .select('id, roles!inner(key)')
+      .eq('company_id', companyId)
+      .eq('active', true)
+      .neq('roles.key', 'worker');
+    if ((managers ?? []).length >= subscription.admin_limit) {
+      throw new HTTPException(402, {
+        message:
+          subscription.admin_limit === 1
+            ? 'Korporia Starter incluye 1 administrador. Contrata Jornada para dar acceso a supervisores y más administradores.'
+            : `Tu plan permite ${subscription.admin_limit} usuarios de administración.`,
+      });
+    }
+  }
+
   let email: string;
   let password: string;
   if (isWorker) {
-    // El colaborador no usa contraseña: entra con código + número y lo protege la selfie.
-    // La cuenta lleva una contraseña aleatoria que nadie conoce.
+    // El colaborador no usa contraseña: entra con código de empresa + número + su PIN
+    // (lo crea con el código de activación). La cuenta lleva una contraseña aleatoria que nadie conoce.
     password = randomSecret();
     email = workerEmail(employeeNumber, company.code, c.env.WORKER_EMAIL_DOMAIN);
   } else {

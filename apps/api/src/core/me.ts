@@ -3,7 +3,9 @@ import { HTTPException } from 'hono/http-exception';
 import { PERMISSIONS } from '@korporia/core';
 import type { AppEnv } from '../env';
 import { accessFor, effectivePermissions, requireAuth, resolveCompany } from '../lib/auth';
+import { loadCredentials } from '../lib/pin';
 import { adminClient, coreDb } from '../lib/supabase';
+import { workerDocsState } from '../lib/worker-docs';
 import { MODULE_REGISTRY } from '../modules';
 import type { SelfEmployee } from '../modules/types';
 
@@ -32,7 +34,11 @@ me.get('/', async (c) => {
   const [{ data: company }, { data: subscription }, { data: activeModules }, { data: sites }, { data: employee }, { data: companies }] =
     await Promise.all([
       core.from('companies').select('id, name, code, country, currency, timezone, locale, whatsapp_support').eq('id', companyId).single(),
-      core.from('subscriptions').select('status, plan, employee_limit, trial_ends_at').eq('company_id', companyId).maybeSingle(),
+      core
+        .from('subscriptions')
+        .select('status, plan, employee_limit, trial_ends_at, admin_limit, starter_clock_until, starter_hr_until, read_only_at, doc_mb_per_employee')
+        .eq('company_id', companyId)
+        .maybeSingle(),
       core.from('company_modules').select('module_key').eq('company_id', companyId).eq('active', true),
       core.from('sites').select('id, name, address, lat, lng, radius_m, geofence_mode').eq('company_id', companyId).eq('active', true).order('name'),
       core
@@ -55,8 +61,19 @@ me.get('/', async (c) => {
     ),
   );
 
+  // Trabajador: ¿ya tiene PIN y le falta firmar algo? (aviso, acuerdo, consentimiento)
+  let worker = null;
+  if (employee && employee.active) {
+    const [creds, docs] = await Promise.all([loadCredentials(c.env, employee.id), workerDocsState(c.env, { ...employee, company_id: companyId })]);
+    worker = { hasPin: Boolean(creds?.pin_hash), pending: docs.pending, biometric: docs.biometric };
+  }
+  // Módulos que hoy aceptan cambios: los demás quedaron en solo lectura por el plan
+  const writable = auth.isPlatformAdmin && !access ? ['core', ...modules] : [...(access?.writable ?? [])].filter((m) => m === 'core' || modules.includes(m));
+
   return c.json({
     userId: auth.userId,
+    writable,
+    worker,
     isPlatformAdmin: auth.isPlatformAdmin,
     role: access?.role ?? (auth.isPlatformAdmin ? 'owner' : undefined),
     permissions: effectivePermissions(auth, companyId, ALL_PERMISSIONS),
