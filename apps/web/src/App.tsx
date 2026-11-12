@@ -10,6 +10,7 @@ import { Mark, Spinner, WhatsAppLink } from './common';
 import { Login } from './core/Login';
 import { SetPassword } from './core/SetPassword';
 import { CreateCompany } from './core/CreateCompany';
+import { CompleteSignup, Signup } from './core/Signup';
 import { WEB_MODULES } from './modules';
 import { listQueue } from './modules/jornada/lib/queue';
 import type { Me } from './types';
@@ -83,7 +84,7 @@ export function App() {
   }
   if (session === undefined) return <Spinner label="Abriendo Korporia…" />;
   if (recovering && session) return <SetPassword onDone={() => setRecovering(false)} />;
-  if (!session) return <Login />;
+  if (!session) return <SignedOut />;
   if (loadError) {
     return (
       <div className="shell">
@@ -101,7 +102,22 @@ export function App() {
   }
   if (!me) return <Spinner label="Cargando tu información…" />;
 
+  // Sesión iniciada sin empresa: termina el registro (Korporia Starter)
+  if (!me.isPlatformAdmin && me.companies.length === 0) {
+    return (
+      <div className="shell">
+        <CompleteSignup me={me} onDone={loadMe} onSignOut={() => void signOut()} />
+      </div>
+    );
+  }
+
   return <Shell me={me} email={session.user.email} reload={loadMe} signOut={signOut} />;
+}
+
+/** Sin sesión: registro (/registro) o inicio de sesión. */
+function SignedOut() {
+  const path = usePath();
+  return path === '/registro' ? <Signup /> : <Login />;
 }
 
 function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload: () => Promise<void>; signOut: () => Promise<void> }) {

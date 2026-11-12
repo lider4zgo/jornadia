@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url><loc>https://korporia.com/</loc><xhtml:link rel="alternate" hreflang="en" href="https://korporia.com/en/"/></url>
+  <url><loc>https://korporia.com/en/</loc><xhtml:link rel="alternate" hreflang="es" href="https://korporia.com/"/></url>
+  <url><loc>https://korporia.com/precios</loc><xhtml:link rel="alternate" hreflang="en" href="https://korporia.com/en/precios"/></url>
+  <url><loc>https://korporia.com/en/precios</loc><xhtml:link rel="alternate" hreflang="es" href="https://korporia.com/precios"/></url>
+  <url><loc>https://korporia.com/terminos</loc></url>
+  <url><loc>https://korporia.com/privacidad</loc></url>
+  <url><loc>https://korporia.com/subencargados</loc></url>
+  <url><loc>https://korporia.com/cookies</loc></url>
+</urlset>

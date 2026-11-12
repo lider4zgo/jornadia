@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MODULES, PERMISSIONS, SYSTEM_ROLES, canGrantRole, isKnownPermission, moduleOf, workerEmail } from './index';
+import { MODULES, PERMISSIONS, SYSTEM_ROLES, canGrantRole, companyCodeFromName, isKnownPermission, moduleOf, workerEmail } from './index';
 
 const role = (key: string) => SYSTEM_ROLES.find((r) => r.key === key)!.permissions;
 
@@ -46,5 +46,17 @@ describe('canGrantRole', () => {
 describe('identidad', () => {
   it('arma el correo interno del colaborador', () => {
     expect(workerEmail(' 00-1 ', 'ELaguna', 'trabajadores.korporia.com')).toBe('001@elaguna.trabajadores.korporia.com');
+  });
+});
+
+describe('companyCodeFromName', () => {
+  it('quita acentos, razón social y espacios', () => {
+    expect(companyCodeFromName('Eléctrica Laguna S.A. de C.V.')).toBe('electricalag');
+    expect(companyCodeFromName('Construcciones Ruiz, S. de R.L.')).toBe('construccion');
+  });
+  it('siempre cumple el formato del código (3–16 letras o números)', () => {
+    for (const n of ['A', 'Ñ & Ñ', '123', 'La Casa de los Muebles', '!!!']) {
+      expect(companyCodeFromName(n)).toMatch(/^[a-z0-9]{3,16}$/);
+    }
   });
 });

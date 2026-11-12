@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { api, ApiError, NetworkError } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { Logo, WhatsAppLink } from '../common';
+import { navigate } from '../lib/router';
+import { EmailCode, sendCode } from './EmailCode';
 
 const CODE_KEY = 'korporia-company-code';
 
@@ -28,6 +30,10 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [forgot, setForgot] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  // Administración: código por correo (sin contraseña) o, como respaldo, contraseña
+  const [staffMethod, setStaffMethod] = useState<'code' | 'password'>('code');
+  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
+  const [noAccount, setNoAccount] = useState(false);
 
   async function sendReset(e: FormEvent) {
     e.preventDefault();
@@ -46,6 +52,8 @@ export function Login() {
     setMode(m);
     setError(null);
     setMatch(null);
+    setCodeSentTo(null);
+    setNoAccount(false);
     localStorage.setItem('korporia-login-mode', m);
   };
 
@@ -53,6 +61,16 @@ export function Login() {
     e.preventDefault();
     setError(null);
     setBusy(true);
+    if (mode === 'staff' && staffMethod === 'code') {
+      const address = email.trim().toLowerCase();
+      const msg = await sendCode(address);
+      setBusy(false);
+      setNoAccount(msg === 'NO_ACCOUNT');
+      if (msg === 'NO_ACCOUNT') setError('No encontramos una cuenta con ese correo.');
+      else if (msg) setError(msg);
+      else setCodeSentTo(address);
+      return;
+    }
     try {
       if (mode === 'worker') {
         // Paso 1: mostrar empresa y nombre para que la persona confirme que es ella
@@ -91,7 +109,7 @@ export function Login() {
     <div className="shell">
       <div className="content" style={{ paddingTop: 32 }}>
         <Logo as="h1" size={30} />
-        <p className="muted">Registra tu entrada y salida con selfie y ubicación.</p>
+        <p className="muted">Recursos humanos y asistencia de tu empresa, en un solo lugar.</p>
 
         <div className="segmented" role="group" aria-label="Tipo de cuenta">
           <button type="button" aria-pressed={mode === 'worker'} onClick={() => switchMode('worker')}>
@@ -134,6 +152,8 @@ export function Login() {
               No soy yo
             </button>
           </div>
+        ) : mode === 'staff' && codeSentTo ? (
+          <EmailCode email={codeSentTo} onBack={() => setCodeSentTo(null)} />
         ) : mode === 'staff' && forgot ? (
           <form className="stack" onSubmit={sendReset} noValidate>
             <h2>Restablecer contraseña</h2>
@@ -198,37 +218,75 @@ export function Login() {
                 Correo
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
               </label>
-              <label className="field">
-                Contraseña
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
-              </label>
+              {staffMethod === 'password' ? (
+                <label className="field">
+                  Contraseña
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+                </label>
+              ) : (
+                <p className="muted" style={{ margin: 0 }}>
+                  Te enviaremos un código a tu correo para entrar, sin contraseñas.
+                </p>
+              )}
             </>
           )}
 
           {error && (
             <div className="notice error" role="alert">
               {error}
+              {noAccount && (
+                <div style={{ marginTop: 8 }}>
+                  <button type="button" className="btn small solid" onClick={() => navigate('/registro')}>
+                    Crear mi cuenta gratis
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           <button
             className="btn solid block"
             type="submit"
-            disabled={busy || (mode === 'worker' ? !code || !number : !email || !password)}
+            disabled={busy || (mode === 'worker' ? !code || !number : !email.includes('@') || (staffMethod === 'password' && !password))}
           >
-            {busy ? (mode === 'worker' ? 'Buscando…' : 'Entrando…') : mode === 'worker' ? 'Continuar' : 'Entrar'}
+            {busy
+              ? mode === 'worker'
+                ? 'Buscando…'
+                : 'Enviando…'
+              : mode === 'worker'
+                ? 'Continuar'
+                : staffMethod === 'code'
+                  ? 'Enviarme el código'
+                  : 'Entrar'}
           </button>
           {mode === 'staff' && (
-            <button
-              type="button"
-              className="btn quiet block"
-              onClick={() => {
-                setForgot(true);
-                setError(null);
-              }}
-            >
-              ¿Olvidaste tu contraseña?
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn quiet block"
+                onClick={() => {
+                  setStaffMethod(staffMethod === 'code' ? 'password' : 'code');
+                  setError(null);
+                }}
+              >
+                {staffMethod === 'code' ? 'Entrar con contraseña' : 'Entrar con código por correo'}
+              </button>
+              {staffMethod === 'password' && (
+                <button
+                  type="button"
+                  className="btn quiet block"
+                  onClick={() => {
+                    setForgot(true);
+                    setError(null);
+                  }}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              )}
+              <button type="button" className="btn quiet block" onClick={() => navigate('/registro')}>
+                ¿Tu empresa aún no usa Korporia? Crea tu cuenta gratis
+              </button>
+            </>
           )}
         </form>
         )}

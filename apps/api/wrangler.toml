@@ -14,8 +14,10 @@ routes = [
 [assets]
 directory = "../web/dist"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
-run_worker_first = ["/api/*"]
+# El Worker decide qué servir según el dominio (ver src/lib/static.ts):
+# korporia.com → sitio en /_site; app.korporia.com → la app.
+run_worker_first = true
+html_handling = "none"
 
 [[r2_buckets]]
 binding = "FILES"

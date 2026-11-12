@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://korporia.com/sitemap.xml

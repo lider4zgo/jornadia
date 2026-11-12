@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Korporia · Precios</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#2B3FD1}a:hover{color:#1E2C9E}
+button{font-family:inherit;cursor:pointer}
+input[type=range]{accent-color:#2B3FD1}
+.kp-toggle{display:none}
+@media (max-width: 820px){.kp-links{display:none !important}.kp-toggle{display:inline-flex !important}}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 100%; background: #FFFFFF; color: #0E1630; font-family: Inter, system-ui, sans-serif">
+
+  <!-- Navegación -->
+  <header style="border-bottom: 1px solid #DDE0EA; background: #FFFFFF">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px; min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+      <a href="Landing.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #0E1630" aria-label="Korporia">
+        <svg width="30" height="30" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="4" width="10" height="40" fill="#2B3FD1"></rect><polygon points="18,24 32,4 44,4 30,24" fill="#12A37E"></polygon><polygon points="18,24 30,24 44,44 32,44" fill="#2B3FD1"></polygon></svg>
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.025em">Korporia</span>
+      </a>
+      <nav class="kp-links" style="display: flex; align-items: center; gap: 24px; font-size: 15px; font-weight: 500" aria-label="{{t.navLabel}}">
+        <a href="Landing.dc.html" style="color: #3A4360; text-decoration: none">{{t.navProduct}}</a>
+        <a href="Landing.dc.html" style="color: #3A4360; text-decoration: none">{{t.navModules}}</a>
+        <a href="#" style="color: #0E1630; text-decoration: none; font-weight: 600">{{t.navPricing}}</a>
+        <a href="#" style="color: #3A4360; text-decoration: none">{{t.navLogin}}</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <div role="group" aria-label="{{t.langLabel}}" style="display: inline-flex; border: 1px solid #C9CEDA; border-radius: 6px; overflow: hidden">
+          <button type="button" onClick="{{setEs}}" aria-pressed="{{esPressed}}" aria-label="Español" style="{{esStyle}}">ES</button>
+          <button type="button" onClick="{{setEn}}" aria-pressed="{{enPressed}}" aria-label="English" style="{{enStyle}}">EN</button>
+        </div>
+        <a href="#" class="kp-links" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; background: #2B3FD1; color: #FFFFFF; border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: 600; white-space: nowrap">{{t.navTrial}}</a>
+        <button type="button" class="kp-toggle" onClick="{{toggleMenu}}" aria-expanded="{{menuExpanded}}" aria-label="{{t.menu}}" style="min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border: 1px solid #C9CEDA; border-radius: 6px; background: #FFFFFF">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="#0E1630" stroke-width="2" stroke-linecap="round"></path></svg>
+        </button>
+      </div>
+    </div>
+    <sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+      <nav aria-label="{{t.navLabel}}" style="display: flex; flex-direction: column; padding: 8px 20px 20px; gap: 4px; border-top: 1px solid #DDE0EA; font-size: 16px; font-weight: 500">
+        <a href="Landing.dc.html" style="min-height: 44px; display: flex; align-items: center; color: #0E1630; text-decoration: none">{{t.navProduct}}</a>
+        <a href="Landing.dc.html" style="min-height: 44px; display: flex; align-items: center; color: #0E1630; text-decoration: none">{{t.navModules}}</a>
+        <a href="#" style="min-height: 44px; display: flex; align-items: center; color: #0E1630; text-decoration: none">{{t.navLogin}}</a>
+        <a href="#" style="margin-top: 8px; min-height: 48px; display: flex; align-items: center; justify-content: center; background: #2B3FD1; color: #FFFFFF; border-radius: 6px; text-decoration: none; font-weight: 600">{{t.navTrial}}</a>
+      </nav>
+    </sc-if>
+  </header>
+
+  <!-- Encabezado -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 56px 20px 28px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center">
+    <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #2B3FD1">{{t.eyebrow}}</div>
+    <h1 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(34px, 6vw, 48px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; max-width: 780px">{{t.title}}</h1>
+    <p style="margin: 0; font-size: clamp(16px, 2.2vw, 18px); line-height: 1.55; color: #4A5470; max-width: 660px">{{t.sub}}</p>
+  </section>
+
+  <!-- Controles -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 0 20px 32px; display: flex; flex-direction: column; align-items: center; gap: 16px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px">
+      <label for="emp-num" style="font-size: 16px; font-weight: 600">{{t.empQ}}</label>
+      <input id="emp-num" type="number" min="1" max="500" value="{{emp}}" onChange="{{onEmp}}" style="width: 96px; min-height: 44px; padding: 0 12px; border: 1px solid #C9CEDA; border-radius: 6px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700; color: #0E1630; text-align: center; box-sizing: border-box">
+    </div>
+    <input type="range" min="1" max="500" value="{{emp}}" onChange="{{onEmp}}" aria-label="{{t.empAria}}" style="width: 100%; max-width: 560px">
+    <div role="group" aria-label="{{t.chipsAria}}" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px">
+      <sc-for list="{{chips}}" as="c" hint-placeholder-count="6">
+        <button type="button" onClick="{{c.pick}}" aria-pressed="{{c.pressed}}" style="{{c.style}}">{{c.label}}</button>
+      </sc-for>
+    </div>
+    <div role="group" aria-label="{{t.periodAria}}" style="display: inline-flex; padding: 4px; background: #F4F5FA; border-radius: 8px; gap: 4px; flex-wrap: wrap; justify-content: center">
+      <button type="button" onClick="{{setMonthly}}" aria-pressed="{{monthlyPressed}}" style="{{monthlyStyle}}">{{t.monthly}}</button>
+      <button type="button" onClick="{{setAnnual}}" aria-pressed="{{annualPressed}}" style="{{annualStyle}}">{{t.annual}}</button>
+    </div>
+  </section>
+
+  <!-- Korporia Starter -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 0 20px 20px">
+    <div style="{{st.boxStyle}}">
+      <div style="flex: 1 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+          <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800">Korporia Starter</h2>
+          <span style="{{st.badgeStyle}}">{{st.badge}}</span>
+        </div>
+        <p style="margin: 0; font-size: 15px; line-height: 1.55; color: #3A4360">{{st.body}}</p>
+      </div>
+      <a href="{{st.href}}" style="{{st.ctaStyle}}">{{st.cta}}</a>
+    </div>
+  </section>
+
+  <!-- Planes -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 0 20px 24px">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; align-items: stretch">
+      <sc-for list="{{plans}}" as="p" hint-placeholder-count="4">
+        <div style="{{p.cardStyle}}">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 26px">
+              <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 700">{{p.name}}</h2>
+              <sc-if value="{{p.badge}}" hint-placeholder-val="{{ true }}">
+                <span style="{{p.badgeStyle}}">{{p.badge}}</span>
+              </sc-if>
+            </div>
+            <p style="{{p.descStyle}}">{{p.desc}}</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+            <div style="{{p.labelStyle}}">{{p.label}}</div>
+            <div style="display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap">
+              <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 34px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums">{{p.main}}</span>
+              <span style="{{p.unitStyle}}">{{p.unit}}</span>
+            </div>
+            <div style="{{p.noteStyle}}">{{p.note}}</div>
+            <sc-if value="{{p.iva}}" hint-placeholder-val="{{ true }}">
+              <div style="{{p.ivaStyle}}">{{p.iva}}</div>
+            </sc-if>
+          </div>
+          <a href="{{p.href}}" style="{{p.ctaStyle}}">{{p.cta}}</a>
+          <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 15px; line-height: 1.45">
+            <sc-if value="{{p.intro}}" hint-placeholder-val="{{ true }}">
+              <li style="font-weight: 600">{{p.intro}}</li>
+            </sc-if>
+            <sc-for list="{{p.features}}" as="f" hint-placeholder-count="5">
+              <li style="display: flex; gap: 10px"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="{{p.check}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>{{f}}</span></li>
+            </sc-for>
+          </ul>
+          <sc-if value="{{p.limits}}" hint-placeholder-val="{{ true }}">
+            <div style="{{p.limitsStyle}}">{{p.limits}}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- Aclaraciones -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 0 20px 24px">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px">
+      <sc-for list="{{t.notes}}" as="n" hint-placeholder-count="3">
+        <div style="display: flex; gap: 14px; padding: 20px 22px; border: 1px solid #DDE0EA; border-radius: 8px">
+          <span style="{{n.dot}}" aria-hidden="true"></span>
+          <div style="font-size: 15px; line-height: 1.55; color: #3A4360"><strong style="color: #0E1630">{{n.title}}</strong> {{n.body}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- Pruebas gratis -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 0 20px 64px">
+    <div style="display: flex; flex-direction: column; gap: 12px; padding: 22px 24px; background: #F4F5FA; border-radius: 8px">
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 28px; font-size: 15px; color: #3A4360; text-align: center">
+        <span><strong style="color: #0E1630">{{t.trialsTitle}}</strong></span>
+        <sc-for list="{{t.trials}}" as="tr" hint-placeholder-count="3"><span>{{tr}}</span></sc-for>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 28px; font-size: 14px; color: #4A5470; text-align: center">
+        <sc-for list="{{t.extras}}" as="ex" hint-placeholder-count="5"><span>{{ex}}</span></sc-for>
+      </div>
+    </div>
+    <p style="margin: 20px 0 0; font-size: 13px; line-height: 1.6; color: #4A5470">{{t.fine}} <a href="https://korporia.com/terminos">{{t.fineTerms}}</a>{{t.fineAnd}}<a href="https://korporia.com/privacidad">{{t.finePrivacy}}</a>.{{t.fineTail}}</p>
+  </section>
+
+  <!-- Precio Fundador -->
+  <section style="background: #0E1630; color: #FFFFFF">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 64px 20px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap">
+      <div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 10px; max-width: 680px">
+        <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #3FD3A6">{{t.founderEyebrow}}</div>
+        <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(28px, 5vw, 36px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15">{{t.founderTitle}}</h2>
+        <p style="margin: 0; font-size: 17px; line-height: 1.55; color: #C9CEE8">{{t.founderBody}}</p>
+      </div>
+      <a href="#" style="display: inline-flex; align-items: center; min-height: 52px; padding: 0 28px; background: #FFFFFF; color: #0E1630; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: 700">{{t.founderCta}}</a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1900}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { emp: 20, annual: false, lang: 'es', menu: false };
+}
+componentDidMount() {
+// Idioma: 1) elección guardada, 2) idioma del dispositivo, 3) zona horaria (aprox. de ubicación), 4) español
+let lang = null;
+try { const saved = window.localStorage.getItem('kp-lang'); if (saved === 'es' || saved === 'en') lang = saved; } catch (e) {}
+if (!lang) {
+try {
+const list = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || '']).map((l) => String(l).toLowerCase());
+for (const l of list) { if (l.indexOf('es') === 0) { lang = 'es'; break; } if (l.indexOf('en') === 0) { lang = 'en'; break; } }
+} catch (e) {}
+}
+if (!lang) {
+try {
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+const enZones = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Phoenix', 'America/Anchorage', 'Pacific/Honolulu', 'America/Toronto', 'America/Vancouver', 'America/Edmonton', 'America/Winnipeg', 'America/Halifax'];
+lang = enZones.indexOf(tz) >= 0 ? 'en' : 'es';
+} catch (e) { lang = 'es'; }
+}
+this.setState({ lang });
+}
+setLang(lang) {
+try { window.localStorage.setItem('kp-lang', lang); } catch (e) {}
+try { document.documentElement.lang = lang; } catch (e) {}
+this.setState({ lang });
+}
+renderVals() {
+const lang = this.state.lang === 'en' ? 'en' : 'es';
+const es = lang === 'es';
+const raw = parseInt(this.state.emp, 10);
+const n = Math.min(500, Math.max(1, isNaN(raw) ? 20 : raw));
+const annual = !!this.state.annual;
+const fmt = (v) => '$' + Math.round(v).toLocaleString('en-US');
+const setEmp = (v) => this.setState({ emp: v });
+
+const L = {
+mo: es ? '/ mes' : '/ month', yr: es ? '/ año' : '/ year',
+first6: es ? 'Primeros 6 meses' : 'First 6 months', from7: es ? 'Desde el mes 7: ' : 'From month 7: ',
+firstYear: es ? 'Primer año' : 'First year', fromY2: es ? 'Desde el 2.º año: ' : 'From year 2: ',
+fixed: es ? 'Precio fijo' : 'Fixed price', pay10: es ? 'Pagas 10 meses y usas 12' : 'Pay for 10 months, use 12', noStep: es ? 'Sin precio escalonado' : 'No step pricing',
+perEmp: es ? 'por empleado' : 'per employee', withVat: es ? 'Total con IVA: ' : 'Total with VAT: '
+};
+const t = es ? {
+navLabel: 'Principal', navProduct: 'Producto', navModules: 'Módulos', navPricing: 'Precios', navLogin: 'Iniciar sesión', navTrial: 'Empezar gratis', menu: 'Menú', langLabel: 'Idioma',
+eyebrow: 'Precios de lanzamiento 2027', title: 'Un precio justo para el tamaño de tu equipo',
+sub: 'Hoy están disponibles Korporia Starter, gratis hasta 25 empleados, y Jornada, ambos con RH básico. Despegue y Full llegan pronto: anótate en la lista de espera y conserva el Precio Fundador. Siempre pagas solo por tus empleados activos.',
+empQ: '¿Cuántos empleados tienes?', empAria: 'Número de empleados', chipsAria: 'Accesos rápidos de número de empleados', chip: 'empleados',
+periodAria: 'Periodo de pago', monthly: 'Mensual', annual: 'Anual · 2 meses gratis',
+notes: [
+{ dot: 'flex: none; width: 10px; height: 10px; margin-top: 7px; border-radius: 50%; background: #2B3FD1', title: 'Timbrado, IMSS y dispersión, con Despegue.', body: 'Con Despegue, Korporia timbrará tu nómina, enviará tus altas, bajas y cambios de salario al IMSS y preparará la dispersión. Incluirá hasta 5 timbres de nómina por empleado al mes; si necesitas más, podrás comprar paquetes de 100, 500 o 1,000 timbres ($99, $399 o $699 más IVA) que no vencen. Próximamente: SPEI directo opcional, para pagar la nómina sin salir de Korporia.' },
+{ dot: 'flex: none; width: 10px; height: 10px; margin-top: 7px; border-radius: 50%; background: #12A37E', title: 'Pagas por tu equipo real.', body: 'El precio se calcula con los empleados activos registrados en Korporia. Si tu equipo crece o se reduce, te avisamos y el ajuste se aplica en tu siguiente periodo de cobro.' },
+{ dot: 'flex: none; width: 10px; height: 10px; margin-top: 7px; border-radius: 50%; background: #F0A23B', title: 'Jornada y RH básico están disponibles hoy.', body: 'RH básico va incluido sin costo en todos los planes de pago. Los demás módulos se activan conforme estén listos; si ya están incluidos en tu plan, sin costo extra.' }
+],
+trialsTitle: 'Empieza o pruébalo gratis:', trials: ['Korporia Starter, plan gratuito: checador 3 meses y RH básico 6 meses (hasta 25 empleados), disponible hoy', 'Despegue, 1 mes, cuando esté disponible', 'Prueba Full, 15 días sin tarjeta (30 si configuras tu empresa), cuando esté disponible'],
+extras: ['Sin plazos forzosos', 'Implementación sin costo', 'Pago con tarjeta, SPEI u OXXO', 'Precios en pesos mexicanos, más IVA', 'Starter y las pruebas funcionan en modo demo, sin validez fiscal'],
+fine: 'Precios en pesos mexicanos más IVA, vigentes del 1 de enero al 31 de diciembre de 2027 para contrataciones en México. El precio se calcula con los empleados activos registrados en Korporia en cada periodo; si cambia tu rango, te avisamos y el ajuste aplica en el siguiente cobro. Korporia Starter es gratuito para empresas de hasta 25 empleados, con 1 razón social, 1 administrador, 50 MB de documentos por empleado activo (promedio de la cuenta, con archivos de hasta 10 MB) y soporte por el centro de ayuda; una cuenta por RFC. Al día 90 el checador se deshabilita y conservas la consulta y exportación de tus registros; al terminar el mes 6, la cuenta pasa a solo lectura con exportación por 90 días y después la información se archiva y se elimina a los 12 meses. Funciona en modo demo: no timbra ni envía movimientos al IMSS. Con más de 25 empleados necesitas un plan de pago. Korporia puede modificar el plan gratuito solo para cuentas nuevas; las cuentas abiertas conservan sus vigencias. RH básico va incluido sin costo en todos los planes de pago. Jornada de 1 a 5 empleados con pago anual: $390 el primer año si pagas antes del día 90 de Korporia Starter; desde el 2.º año, $490. En Despegue y Full, el precio de arranque aplica a los primeros 6 meses de pago y el regular desde el mes 7. Puedes cancelar cuando quieras; el pago anual cubre 12 meses y no es reembolsable, salvo lo previsto en los Términos. Despegue y Full incluyen hasta 5 timbres de nómina por empleado al mes. Full incluye 30, 50 o 100 facturas CFDI al mes según tu rango (1–5, 6–10 u 11–25 empleados) y, desde 26 empleados, 4 por empleado con un mínimo de 150; cuentan las facturas, notas de crédito y complementos de pago, no las cancelaciones, y las no usadas no se acumulan. Los paquetes extra de timbres se usan para nómina y facturas, solo después de agotar la cuota del mes, y no vencen. Precio Fundador: para contrataciones en 2027, y para quien se registre en 2027 (incluida la lista de espera) y contrate Despegue o Full dentro de los 60 días siguientes a que estén disponibles; congela el precio regular 24 meses desde el mes 7; en Jornada, 24 meses desde tu primer pago (con pago anual, mientras renueves sin interrupción). Las funciones marcadas “Próximamente” se activan conforme estén listas. Las pruebas gratuitas funcionan en modo demo, sin validez fiscal. Consulta los',
+fineTerms: 'Términos y condiciones', fineAnd: ' y el ', finePrivacy: 'Aviso de privacidad', fineTail: '',
+founderEyebrow: 'Precio Fundador 2027', founderTitle: 'Crece con estructura y con tu precio congelado.',
+founderBody: 'Si contratas en 2027, tu precio regular queda congelado durante 24 meses a partir del mes 7; en Jornada, 24 meses desde tu primer pago. Si te registras en 2027 y te anotas en la lista de espera, también lo conservas al contratar Despegue o Full dentro de los 60 días siguientes a su lanzamiento. Con pago anual, se mantiene mientras renueves sin interrupción.', founderCta: 'Empezar gratis'
+} : {
+navLabel: 'Main', navProduct: 'Product', navModules: 'Modules', navPricing: 'Pricing', navLogin: 'Log in', navTrial: 'Start free', menu: 'Menu', langLabel: 'Language',
+eyebrow: '2027 launch pricing', title: 'A fair price for the size of your team',
+sub: 'Korporia Starter, free for up to 25 employees, and Jornada are available today, both with basic HR. Despegue and Full are coming soon: join the waitlist and keep the Founder Price. You always pay only for your active employees.',
+empQ: 'How many employees do you have?', empAria: 'Number of employees', chipsAria: 'Quick employee counts', chip: 'employees',
+periodAria: 'Billing period', monthly: 'Monthly', annual: 'Annual · 2 months free',
+notes: [
+{ dot: 'flex: none; width: 10px; height: 10px; margin-top: 7px; border-radius: 50%; background: #2B3FD1', title: 'Stamping, IMSS and disbursement, with Despegue.', body: 'With Despegue, Korporia will stamp your payroll (CFDI), file hires, terminations and salary changes with IMSS, and prepare the disbursement. It will include up to 5 payroll stamps per employee per month; if you need more, you’ll be able to buy packs of 100, 500 or 1,000 stamps ($99, $399 or $699 plus VAT) that never expire. Coming soon: optional direct SPEI transfers, to pay payroll without leaving Korporia.' },
+{ dot: 'flex: none; width: 10px; height: 10px; margin-top: 7px; border-radius: 50%; background: #12A37E', title: 'You pay for your real team.', body: 'Pricing is based on the active employees registered in Korporia. If your team grows or shrinks, we let you know and the change applies on your next billing period.' },
+{ dot: 'flex: none; width: 10px; height: 10px; margin-top: 7px; border-radius: 50%; background: #F0A23B', title: 'Jornada and basic HR are available today.', body: 'Basic HR is included at no cost in every paid plan. The other modules switch on as they become ready; if they’re already included in your plan, at no extra cost.' }
+],
+trialsTitle: 'Start or try it free:', trials: ['Korporia Starter, free plan: time clock for 3 months and basic HR for 6 months (up to 25 employees), available today', 'Despegue, 1 month, once available', 'Prueba Full, 15 days, no card (30 if you set up your company), once available'],
+extras: ['No long-term contracts', 'Free implementation', 'Pay by card, SPEI or OXXO', 'Prices in Mexican pesos, plus VAT', 'Starter and trials run in demo mode, with no tax validity'],
+fine: 'Prices in Mexican pesos plus VAT, effective January 1 to December 31, 2027, for customers in Mexico. Pricing is based on the active employees registered in Korporia each billing period; if your tier changes, we let you know and the change applies on your next charge. Korporia Starter is free for companies with up to 25 employees, with 1 legal entity, 1 admin, 50 MB of documents per active employee (averaged across the account, with files up to 10 MB) and support through the help center; one account per RFC. On day 90 the time clock is turned off and you keep access to view and export your records; after month 6, the account becomes read-only with export for 90 days, and then your data is archived and deleted at 12 months. It runs in demo mode: it doesn’t stamp CFDI or file with IMSS. Teams of more than 25 employees need a paid plan. Korporia may change the free plan for new accounts only; existing accounts keep their periods. Basic HR is included at no cost in every paid plan. Jornada for 1 to 5 employees on annual billing: $390 the first year if you pay before Korporia Starter day 90; from year 2, $490. On Despegue and Full, the starter price applies to your first 6 paid months and the regular price from month 7. Cancel anytime; annual plans cover 12 months and are non-refundable, except as provided in the Terms. Despegue and Full include up to 5 payroll stamps per employee per month. Full includes 30, 50 or 100 CFDI invoices a month depending on your tier (1–5, 6–10 or 11–25 employees) and, from 26 employees, 4 per employee with a minimum of 150; invoices, credit notes and payment complements count, cancellations don’t, and unused invoices don’t roll over. Extra stamp packs cover payroll and invoices, are used only after your monthly allowance runs out, and never expire. Founder Price: for sign-ups in 2027, and for anyone who registers in 2027 (waitlist included) and subscribes to Despegue or Full within 60 days of its release; locks your regular price for 24 months from month 7; on Jornada, 24 months from your first payment (on annual billing, as long as you renew without interruption). Features marked “Coming soon” switch on as they become ready. Free trials run in demo mode, with no tax validity. See the',
+fineTerms: 'Terms and Conditions', fineAnd: ' and ', finePrivacy: 'Privacy Notice', fineTail: ' In case of discrepancy, the Spanish version prevails.',
+founderEyebrow: '2027 Founder Price', founderTitle: 'Grow with structure, with your price locked in.',
+founderBody: 'Subscribe in 2027 and your regular price stays locked for 24 months starting in month 7; on Jornada, 24 months from your first payment. Register in 2027 and join the waitlist, and you also keep it when you subscribe to Despegue or Full within 60 days of its release. With annual billing, it holds as long as you renew without interruption.', founderCta: 'Start free'
+};
+
+const chipOn = 'min-height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #2B3FD1; background: #2B3FD1; color: #FFFFFF; font-size: 14px; font-weight: 600';
+const chipOff = 'min-height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #C9CEDA; background: #FFFFFF; color: #0E1630; font-size: 14px; font-weight: 600';
+const chips = [5, 10, 25, 50, 100, 300].map((v) => ({ label: v + ' ' + t.chip, pressed: v === n ? 'true' : 'false', style: v === n ? chipOn : chipOff, pick: () => setEmp(v) }));
+const segOn = 'min-height: 40px; padding: 0 18px; border: none; border-radius: 6px; background: #FFFFFF; color: #0E1630; font-size: 15px; font-weight: 600; box-shadow: 0 1px 2px rgba(14,22,48,0.12)';
+const segOff = 'min-height: 40px; padding: 0 18px; border: none; border-radius: 6px; background: transparent; color: #4A5470; font-size: 15px; font-weight: 600';
+const lOn = 'min-width: 40px; min-height: 36px; padding: 0 10px; border: none; background: #0E1630; color: #FFFFFF; font-size: 13px; font-weight: 700';
+const lOff = 'min-width: 40px; min-height: 36px; padding: 0 10px; border: none; background: #FFFFFF; color: #4A5470; font-size: 13px; font-weight: 700';
+
+// Escalonado: arranque meses 1-6, regular desde el mes 7; anual = 10/12 de lo mensual
+const iva = (v) => L.withVat + fmt(v * 1.16);
+const step = (arr, reg, pe) => annual
+? { label: L.firstYear, main: fmt((6 * arr + 6 * reg) * 10 / 12), unit: L.yr, note: L.fromY2 + fmt(reg * 10) + ' ' + L.yr, iva: iva((6 * arr + 6 * reg) * 10 / 12) }
+: { label: L.first6 + (pe ? ' · $40 ' + L.perEmp : ''), main: fmt(arr), unit: L.mo, note: L.from7 + fmt(reg) + ' ' + L.mo + (pe ? ' ($60 ' + L.perEmp + ')' : ''), iva: iva(arr) };
+const flat = (m) => annual
+? { label: L.fixed, main: fmt(m * 10), unit: L.yr, note: L.pay10, iva: iva(m * 10) }
+: { label: L.fixed, main: fmt(m), unit: L.mo, note: L.noStep, iva: iva(m) };
+
+let jp;
+if (n <= 5) jp = annual
+? { label: L.fixed, main: '$490', unit: L.yr, note: es ? '$390 el primer año si pagas antes del día 90 de Starter' : '$390 the first year if you pay before Starter day 90', iva: iva(490) }
+: flat(49);
+else if (n <= 10) jp = flat(79);
+else if (n <= 25) jp = flat(199);
+else if (n <= 50) jp = flat(349);
+else if (n <= 100) jp = flat(599);
+else jp = flat(599 + 4 * (n - 100));
+const stOk = n <= 25;
+if (stOk) jp.note = es ? 'Empieza gratis con Korporia Starter' : 'Start free with Korporia Starter';
+
+const dOk = n <= 10;
+const dp = !dOk ? { label: es ? 'Hasta 10 empleados' : 'Up to 10 employees', main: '—', unit: '', note: es ? 'Para tu equipo, te conviene Full' : 'For your team, choose Full' } : (n <= 5 ? step(149, 249) : step(149, 349));
+
+const big = n > 250;
+const inv = n <= 5 ? 30 : n <= 10 ? 50 : n <= 25 ? 100 : Math.max(150, 4 * n);
+let fp;
+if (n <= 5) fp = step(249, 399);
+else if (n <= 10) fp = step(249, 499);
+else if (n <= 25) fp = step(549, 899);
+else fp = step(40 * n, 60 * n, true);
+if (big) fp = { label: es ? 'Más de 250 empleados' : 'More than 250 employees', main: '—', unit: '', note: es ? 'Para tu equipo, te armamos una propuesta en Empresa' : 'For your team, we’ll prepare an Empresa proposal' };
+const ep = { label: es ? 'Propuesta a tu medida' : 'Tailored proposal', main: es ? 'Hablemos' : 'Let’s talk', unit: '', note: es ? 'Te respondemos por WhatsApp o correo.' : 'We’ll reply by WhatsApp or email.' };
+const salesHref = 'https://wa.me/528718963470?text=' + encodeURIComponent(es ? 'Hola, quiero información del plan Empresa de Korporia (' + n + ' empleados).' : 'Hi, I’d like information about the Korporia Empresa plan (' + n + ' employees).');
+
+const card = (hl, dark) => 'display: flex; flex-direction: column; gap: 20px; padding: 28px 24px; border-radius: 8px; ' + (dark ? 'background: #0E1630; color: #FFFFFF; border: 1px solid #0E1630' : hl ? 'background: #F7F8FE; border: 2px solid #2B3FD1' : 'background: #FFFFFF; border: 1px solid #DDE0EA');
+const desc = (d) => 'margin: 0; font-size: 15px; line-height: 1.5; min-height: 46px; color: ' + (d ? '#C9CEE8' : '#4A5470');
+const lbl = (d) => 'font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: ' + (d ? '#AEB6F0' : '#4A5470');
+const unit = (d) => 'font-size: 14px; color: ' + (d ? '#C9CEE8' : '#4A5470');
+const note = (d) => 'font-size: 14px; line-height: 1.45; min-height: 20px; color: ' + (d ? '#C9CEE8' : '#4A5470');
+const ctaPrimary = 'display: flex; align-items: center; justify-content: center; min-height: 48px; background: #2B3FD1; color: #FFFFFF; border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: 600';
+const ctaGhost = 'display: flex; align-items: center; justify-content: center; min-height: 48px; border: 1px solid #2B3FD1; color: #2B3FD1; border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: 600';
+const ctaLight = 'display: flex; align-items: center; justify-content: center; min-height: 48px; background: #FFFFFF; color: #0E1630; border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: 600';
+const ctaOff = 'display: flex; align-items: center; justify-content: center; min-height: 48px; border: 1px solid #C9CEDA; color: #4A5470; border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: 600';
+const badgeAmber = 'padding: 4px 10px; background: #FDF1DF; color: #7A4A05; font-size: 12px; font-weight: 600; border-radius: 100px; white-space: nowrap';
+const badgeIndigo = 'padding: 4px 10px; background: #2B3FD1; color: #FFFFFF; font-size: 12px; font-weight: 600; border-radius: 100px; white-space: nowrap';
+const badgeSoon = 'padding: 4px 10px; background: #F4F5FA; color: #3A4360; border: 1px solid #C9CEDA; font-size: 12px; font-weight: 600; border-radius: 100px; white-space: nowrap';
+const badgeGreen = 'padding: 4px 10px; background: #3FD3A6; color: #04281C; font-size: 12px; font-weight: 600; border-radius: 100px; white-space: nowrap';
+const limitsLight = 'padding-top: 14px; border-top: 1px solid #DDE0EA; font-size: 13px; line-height: 1.5; color: #4A5470; margin-top: auto';
+const limitsDark = 'padding-top: 14px; border-top: 1px solid #2C3654; font-size: 13px; line-height: 1.5; color: #C9CEE8; margin-top: auto';
+const ivaSt = (d) => 'font-size: 13px; color: ' + (d ? '#AEB6F0' : '#5B6480');
+const pv = (o, d) => ({ label: o.label, labelStyle: lbl(d), main: o.main, unit: o.unit, unitStyle: unit(d), note: o.note, noteStyle: note(d), iva: o.iva || '', ivaStyle: ivaSt(d) });
+
+const stBox = 'display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; padding: 22px 24px; border-radius: 8px; ' + (stOk ? 'background: #FFF8EE; border: 1px solid #F0A23B' : 'background: #F4F5FA; border: 1px solid #DDE0EA');
+const st = stOk ? {
+boxStyle: stBox, badgeStyle: badgeAmber, badge: es ? 'Gratis · hasta 25 empleados' : 'Free · up to 25 employees',
+body: es ? 'Checador completo 3 meses y RH básico 6 meses: expediente, contratación, vacaciones e incidencias y portal del empleado. Sin tarjeta. Al día 90 contratas Jornada para seguir registrando asistencia; tus registros de jornada siguen consultables y exportables mientras tu cuenta esté activa y durante los 90 días de solo lectura.' : 'Full time clock for 3 months and basic HR for 6 months: employee records, hiring, time off and incidents, and the employee portal. No card. On day 90 you subscribe to Jornada to keep tracking attendance; your time records stay viewable and exportable while your account is active and during the 90-day read-only period.',
+cta: es ? 'Empezar gratis' : 'Start free', href: '#', ctaStyle: ctaPrimary + '; padding: 0 24px'
+} : {
+boxStyle: stBox, badgeStyle: badgeSoon, badge: es ? 'Hasta 25 empleados' : 'Up to 25 employees',
+body: es ? 'El plan gratuito es para equipos de hasta 25 empleados. Para tu equipo, empieza con Jornada, que ya incluye RH básico; te mostramos la plataforma en una videollamada.' : 'The free plan is for teams of up to 25 employees. For your team, start with Jornada, which already includes basic HR; we’ll show you the platform on a video call.',
+cta: es ? 'Agenda una demo' : 'Book a demo', href: 'https://wa.me/528718963470?text=' + encodeURIComponent(es ? 'Hola, quiero una demo de Korporia (' + n + ' empleados).' : 'Hi, I’d like a Korporia demo (' + n + ' employees).'), ctaStyle: ctaGhost + '; padding: 0 24px'
+};
+const plans = [
+Object.assign({ href: '#', name: 'Jornada', badge: es ? 'Disponible hoy' : 'Available today', badgeStyle: badgeAmber,
+desc: es ? 'Control de asistencia y RH básico, diseñado para el registro electrónico de jornada que exige la reforma laboral desde 2027. Lo actualizamos cuando la STPS publique sus reglas.' : 'Attendance tracking and basic HR, designed for the electronic time-tracking rule Mexico requires from 2027. We’ll update it when the STPS publishes its rules.', descStyle: desc(false),
+cta: stOk ? (es ? 'Empezar gratis con Starter' : 'Start free with Starter') : (es ? 'Contratar Jornada' : 'Get Jornada'), ctaStyle: ctaGhost, intro: '', check: '#12A37E',
+features: es ? ['RH básico incluido: expediente, contratación, vacaciones e incidencias y portal del empleado', 'Entrada y salida con selfie y verificación facial, o con PIN', 'Geocercas por obra o sucursal', 'Funciona sin conexión', 'Reporte de jornada y horas extra', '“Mis registros” para cada trabajador'] : ['Basic HR included: employee records, hiring, time off and incidents, and the employee portal', 'Clock in and out with selfie and face verification, or a PIN', 'Geofences by job site or branch', 'Works offline', 'Hours and overtime reports', '“My records” for every worker'],
+limits: '', limitsStyle: limitsLight, cardStyle: card(false, false) }, pv(jp, false)),
+Object.assign({ href: '#', name: 'Despegue', badge: es ? 'Próximamente' : 'Coming soon', badgeStyle: badgeSoon,
+desc: es ? 'Arranca tu empresa en orden, con personal y nómina completa. Ideal hasta 10 empleados.' : 'Get your business in order from the start, with people and full payroll. Best for up to 10 employees.', descStyle: desc(false),
+cta: dOk ? (es ? 'Avísame cuando esté listo' : 'Notify me when it’s ready') : (es ? 'No disponible para tu equipo' : 'Not available for your team'), ctaStyle: dOk ? ctaGhost : ctaOff,
+intro: es ? 'Todo lo de Jornada (con RH básico), y cuando esté listo:' : 'Everything in Jornada (with basic HR), and once ready:', check: '#12A37E',
+features: es ? ['Nómina completa con timbrado incluido: aguinaldo, PTU, finiquitos y liquidaciones', 'Altas, bajas y cambios de salario directo al IMSS, además de SUA, INFONAVIT y FONACOT', 'Dispersión de nómina con layouts bancarios'] : ['Full payroll with CFDI stamping included: year-end bonus, profit sharing, severance and settlements', 'Hires, terminations and salary changes filed directly with IMSS, plus SUA, INFONAVIT and FONACOT', 'Payroll disbursement with bank layouts'],
+limits: es ? '1 razón social · 2 administradores · 2 sucursales u obras' : '1 legal entity · 2 admins · 2 branches or job sites', limitsStyle: limitsLight, cardStyle: card(false, false) }, pv(dp, false)),
+Object.assign({ href: '#', name: 'Full', badge: es ? 'Próximamente' : 'Coming soon', badgeStyle: badgeSoon,
+desc: es ? 'Todo Korporia: RH y finanzas completos en un solo lugar.' : 'All of Korporia: complete HR and finance in one place.', descStyle: desc(false),
+cta: big ? (es ? 'Ver Korporia Empresa' : 'See Korporia Empresa') : (es ? 'Únete a la lista de espera' : 'Join the waitlist'), ctaStyle: big ? ctaGhost : ctaPrimary,
+intro: es ? 'Todo lo de Despegue, y cuando esté listo:' : 'Everything in Despegue, and once ready:', check: '#12A37E',
+features: es ? ['Portal del jefe y aprobaciones por equipo', 'Prestaciones: fondo de ahorro, vales y bonos', 'Finanzas: facturación CFDI timbrada, ingresos, gastos y flujo de efectivo', 'Reportes y panel para tu contador', 'Reclutamiento, desempeño y capacitación'] : ['Manager portal and team approvals', 'Benefits: savings fund, vouchers and bonuses', 'Finance: stamped CFDI invoicing, income, expenses and cash flow', 'Reports and a panel for your accountant', 'Recruiting, performance and training'],
+limits: big ? (es ? 'Sin límite de administradores ni sucursales' : 'Unlimited admins and branches') : (es ? 'Incluye ' + inv.toLocaleString('en-US') + ' facturas CFDI al mes · Sin límite de administradores ni sucursales' : 'Includes ' + inv.toLocaleString('en-US') + ' CFDI invoices a month · Unlimited admins and branches'), limitsStyle: limitsLight, cardStyle: card(!big, false) }, pv(fp, false)),
+Object.assign({ name: 'Empresa', badge: big ? (es ? 'Para tu equipo' : 'For your team') : '', badgeStyle: badgeGreen,
+desc: es ? 'Hoy: Jornada y RH básico para más de 250 empleados y varias razones sociales. El resto de Full, conforme esté listo.' : 'Today: Jornada and basic HR for more than 250 employees and multiple legal entities. The rest of Full, as it becomes ready.', descStyle: desc(true),
+cta: es ? 'Contactar a ventas' : 'Contact sales', href: salesHref, ctaStyle: ctaLight, intro: es ? 'Todo lo de Full cuando esté listo, más:' : 'Everything in Full once ready, plus:', check: '#3FD3A6',
+features: es ? ['Varias razones sociales en una sola cuenta', 'Implementación remota sin costo', 'Carga de personal gratis con pago anual', 'Soporte prioritario: primera respuesta en 1 hora hábil para problemas graves'] : ['Multiple legal entities in one account', 'Free remote implementation', 'Free staff upload with annual billing', 'Priority support: first response within 1 business hour for critical issues'],
+limits: es ? 'O escríbenos a ventas@korporia.com. Cupo limitado en 2027.' : 'Or email ventas@korporia.com. Limited spots in 2027.', limitsStyle: limitsDark, cardStyle: card(false, true) }, pv(ep, true))
+];
+return {
+t, emp: n,
+onEmp: (e) => { const v = parseInt(e && e.target ? e.target.value : e, 10); if (!isNaN(v)) setEmp(Math.min(500, Math.max(1, v))); },
+chips, plans, st,
+monthlyPressed: annual ? 'false' : 'true', annualPressed: annual ? 'true' : 'false',
+monthlyStyle: annual ? segOff : segOn, annualStyle: annual ? segOn : segOff,
+setMonthly: () => this.setState({ annual: false }), setAnnual: () => this.setState({ annual: true }),
+menuOpen: !!this.state.menu, menuExpanded: this.state.menu ? 'true' : 'false', toggleMenu: () => this.setState({ menu: !this.state.menu }),
+esPressed: es ? 'true' : 'false', enPressed: es ? 'false' : 'true', esStyle: es ? lOn : lOff, enStyle: es ? lOff : lOn,
+setEs: () => this.setLang('es'), setEn: () => this.setLang('en')
+};
+}
+}
+</script>
+</body>
+</html>

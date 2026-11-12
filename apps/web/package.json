@@ -6,7 +6,7 @@
   "scripts": {
     "models": "node scripts/copy-models.mjs",
     "dev": "npm run models && vite",
-    "build": "npm run models && tsc --noEmit -p . && vite build",
+    "build": "npm run models && tsc --noEmit -p . && vite build && npm --prefix ../site run build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p ."
   },

@@ -431,6 +431,37 @@ await test('provision_company crea empresa, prueba, módulos, ajustes y dueño',
   assert(access.rows[0].role_key === 'owner' && access.rows[0].modules.includes('jornada'), 'el dueño quedó con acceso a Jornada');
 });
 
+// ---------------------------------------------------------------------
+// Registro por autoservicio y lista de espera
+// ---------------------------------------------------------------------
+await test('la lista de espera no se lee ni se escribe desde la app', async () => {
+  await asService(`insert into core.waitlist (email, consent_version) values ('prospecto@ejemplo.com', '2026-11-06')`);
+  await expectError(asUser(ids.owner, `select * from core.waitlist`));
+  await expectError(asUser(ids.owner, `insert into core.waitlist (email, consent_version) values ('x@y.com', 'v')`));
+  await expectError(asService(`insert into core.waitlist (email, consent_version) values ('Mayus@Ejemplo.com', 'v')`));
+});
+
+await test('la aceptación de términos es inalterable y cada quien ve la suya', async () => {
+  await asService(
+    `insert into core.legal_acceptances (company_id, user_id, document, version, ip) values ($1, $2, 'terminos', '2.2', '200.1.1.1')`,
+    [ids.companyA, ids.owner],
+  );
+  await expectError(db.query(`update core.legal_acceptances set version = '1.0'`), 'inalterables');
+  const own = await asUser(ids.owner, `select version from core.legal_acceptances`);
+  const other = await asUser(ids.worker1, `select version from core.legal_acceptances`);
+  assert(own.rows.length === 1 && other.rows.length === 0, 'visibilidad de aceptaciones');
+  await expectError(asUser(ids.owner, `insert into core.legal_acceptances (user_id, document, version) values ($1, 'terminos', '9')`, [ids.owner]));
+});
+
+await test('Korporia Starter guarda sus dos vigencias', async () => {
+  await asService(
+    `update core.subscriptions set plan = 'starter', starter_started_at = now(), starter_clock_until = now() + interval '90 days', starter_hr_until = now() + interval '6 months' where company_id = $1`,
+    [ids.companyB],
+  );
+  const { rows } = await db.query(`select plan, starter_clock_until < starter_hr_until as ok from core.subscriptions where company_id = $1`, [ids.companyB]);
+  assert(rows[0].plan === 'starter' && rows[0].ok, 'vigencias del plan Starter');
+});
+
 console.log(`\n${passed} pruebas correctas, ${failed} fallidas\n`);
 await db.close();
 process.exit(failed ? 1 : 0);

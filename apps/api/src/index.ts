@@ -6,6 +6,8 @@ import { companies } from './core/companies';
 import { employees } from './core/employees';
 import { me } from './core/me';
 import { members } from './core/members';
+import { signup, waitlist } from './core/signup';
+import { serveStatic } from './lib/static';
 import { MODULE_REGISTRY } from './modules';
 
 const app = new Hono<AppEnv>();
@@ -39,13 +41,16 @@ app.route('/api/core/me', me);
 app.route('/api/core/companies', companies);
 app.route('/api/core/members', members);
 app.route('/api/core/employees', employees);
+app.route('/api/core/signup', signup);
+app.route('/api/core/waitlist', waitlist);
 
 // Módulos: cada uno en /api/<módulo>
 for (const module of MODULE_REGISTRY) app.route(`/api/${module.key}`, module.routes);
 
+// Todo lo que no es /api: el sitio (korporia.com) o la app (app.korporia.com), según el dominio
 app.notFound((c) => {
   if (c.req.path.startsWith('/api/')) return c.json({ error: 'Ruta no encontrada.' }, 404);
-  return c.env.ASSETS.fetch(c.req.raw);
+  return serveStatic(c.req.raw, c.env.ASSETS);
 });
 
 app.onError((err, c) => {

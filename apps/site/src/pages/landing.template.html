@@ -1,0 +1,297 @@
+<div style="width: 100%; min-height: 100%; background: #FFFFFF; color: #0E1630; font-family: Inter, system-ui, sans-serif">
+
+  <!-- Navegación -->
+  <header style="border-bottom: 1px solid #DDE0EA; background: #FFFFFF">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px; min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+      <a href="/" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #0E1630" aria-label="Korporia">
+        <svg width="30" height="30" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="4" width="10" height="40" fill="#2B3FD1"></rect><polygon points="18,24 32,4 44,4 30,24" fill="#12A37E"></polygon><polygon points="18,24 30,24 44,44 32,44" fill="#2B3FD1"></polygon></svg>
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.025em">Korporia</span>
+      </a>
+      <nav class="kp-links" style="display: flex; align-items: center; gap: 24px; font-size: 15px; font-weight: 500" aria-label="{{t.navLabel}}">
+        <a href="#modulos" style="color: #3A4360; text-decoration: none">{{t.navModules}}</a>
+        <a href="#como" style="color: #3A4360; text-decoration: none">{{t.navHow}}</a>
+        <a href="/precios" style="color: #3A4360; text-decoration: none">{{t.navPricing}}</a>
+        <a href="#faq" style="color: #3A4360; text-decoration: none">{{t.navFaq}}</a>
+        <a href="https://app.korporia.com/" style="color: #3A4360; text-decoration: none">{{t.navLogin}}</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <div role="group" aria-label="{{t.langLabel}}" style="display: inline-flex; border: 1px solid #C9CEDA; border-radius: 6px; overflow: hidden">
+          <button type="button" onClick="{{setEs}}" aria-pressed="{{esPressed}}" aria-label="Español" style="{{esStyle}}">ES</button>
+          <button type="button" onClick="{{setEn}}" aria-pressed="{{enPressed}}" aria-label="English" style="{{enStyle}}">EN</button>
+        </div>
+        <a href="https://app.korporia.com/registro" class="kp-links" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; background: #2B3FD1; color: #FFFFFF; border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: 600; white-space: nowrap">{{t.navTrial}}</a>
+        <button type="button" class="kp-toggle" onClick="{{toggleMenu}}" aria-expanded="{{menuExpanded}}" aria-label="{{t.menu}}" style="min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border: 1px solid #C9CEDA; border-radius: 6px; background: #FFFFFF">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="#0E1630" stroke-width="2" stroke-linecap="round"></path></svg>
+        </button>
+      </div>
+    </div>
+    <sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+      <nav aria-label="{{t.navLabel}}" style="display: flex; flex-direction: column; padding: 8px 20px 20px; gap: 4px; border-top: 1px solid #DDE0EA; font-size: 16px; font-weight: 500">
+        <a href="#modulos" onClick="{{closeMenu}}" style="min-height: 44px; display: flex; align-items: center; color: #0E1630; text-decoration: none">{{t.navModules}}</a>
+        <a href="#como" onClick="{{closeMenu}}" style="min-height: 44px; display: flex; align-items: center; color: #0E1630; text-decoration: none">{{t.navHow}}</a>
+        <a href="/precios" style="min-height: 44px; display: flex; align-items: center; color: #0E1630; text-decoration: none">{{t.navPricing}}</a>
+        <a href="#faq" onClick="{{closeMenu}}" style="min-height: 44px; display: flex; align-items: center; color: #0E1630; text-decoration: none">{{t.navFaq}}</a>
+        <a href="https://app.korporia.com/" style="min-height: 44px; display: flex; align-items: center; color: #0E1630; text-decoration: none">{{t.navLogin}}</a>
+        <a href="https://app.korporia.com/registro" style="margin-top: 8px; min-height: 48px; display: flex; align-items: center; justify-content: center; background: #2B3FD1; color: #FFFFFF; border-radius: 6px; text-decoration: none; font-weight: 600">{{t.navTrial}}</a>
+      </nav>
+    </sc-if>
+  </header>
+
+  <!-- Portada -->
+  <section style="background: #F4F5FA">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 64px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 48px">
+      <div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 22px">
+        <div style="display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; padding: 6px 12px; background: #FFFFFF; border: 1px solid #DDE0EA; border-radius: 100px; font-size: 13px; font-weight: 600; color: #3A4360">
+          <span style="flex: none; width: 8px; height: 8px; border-radius: 50%; background: #F0A23B" aria-hidden="true"></span>
+          {{t.heroBadge}}
+        </div>
+        <h1 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(40px, 7vw, 60px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.02">{{t.heroTitle}}</h1>
+        <p style="margin: 0; font-size: clamp(17px, 2.2vw, 20px); line-height: 1.55; color: #3A4360; max-width: 560px">{{t.heroSub}}</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px">
+          <a href="https://app.korporia.com/registro" style="display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 26px; background: #2B3FD1; color: #FFFFFF; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: 700">{{t.ctaTrial}}</a>
+          <a href="/precios" style="display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 26px; background: #FFFFFF; color: #0E1630; border: 1px solid #C9CEDA; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: 600">{{t.ctaPricing}}</a>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14px; color: #4A5470">
+          <sc-for list="{{t.perks}}" as="pk" hint-placeholder-count="3"><span>{{pk}}</span></sc-for>
+        </div>
+      </div>
+
+      <!-- Vista ilustrativa del producto -->
+      <div style="flex: 1 1 400px; min-width: 0; max-width: 560px; display: flex; flex-direction: column" role="img" aria-label="{{t.mockAlt}}">
+        <div style="background: #FFFFFF; border: 1px solid #DDE0EA; border-radius: 12px; padding: 24px 24px 88px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 12px 32px rgba(14,22,48,0.08)">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px">
+            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 17px; font-weight: 700">{{t.mockTitle}}</span>
+            <span style="font-size: 13px; color: #4A5470; white-space: nowrap">{{t.mockSite}}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+            <sc-for list="{{t.stats}}" as="s" hint-placeholder-count="3">
+              <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 12px; background: #F4F5FA; border-radius: 8px; min-width: 0">
+                <span style="font-size: 12px; color: #4A5470; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.label}}</span>
+                <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 26px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap">{{s.value}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 13px"><span>{{t.mockWeek}}</span><span style="color: #4A5470">{{t.mockCap}}</span></div>
+            <div style="height: 8px; background: #EEF0F6; border-radius: 4px; overflow: hidden"><div style="width: 72%; height: 100%; background: #2B3FD1"></div></div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid #DDE0EA; border-radius: 8px; max-width: calc(100% - 140px); min-width: 200px">
+            <span style="flex: none; width: 34px; height: 34px; border-radius: 6px; background: #E7F6F1; display: flex; align-items: center; justify-content: center" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#12A37E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+            <div style="display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.4; min-width: 0"><strong>{{t.mockPayroll}}</strong><span style="color: #4A5470">{{t.mockPayrollSub}}</span></div>
+          </div>
+        </div>
+        <div style="align-self: flex-end; margin: -120px 16px 0 0; width: 132px; background: #0E1630; border-radius: 22px; padding: 8px; box-shadow: 0 12px 32px rgba(14,22,48,0.2)">
+          <div style="background: #FFFFFF; border-radius: 15px; padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px">
+            <span style="font-size: 11px; font-weight: 600; color: #4A5470">Korporia Jornada</span>
+            <div style="width: 58px; height: 58px; border-radius: 50%; border: 3px solid #F0A23B; display: flex; align-items: center; justify-content: center" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="9" r="4" fill="none" stroke="#0E1630" stroke-width="1.8"></circle><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6" fill="none" stroke="#0E1630" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </div>
+            <span style="font-size: 11px; text-align: center; line-height: 1.35">{{t.mockGeo}}</span>
+            <span style="width: 100%; padding: 8px 0; background: #F0A23B; color: #2A1A05; border-radius: 6px; font-size: 12px; font-weight: 700; text-align: center">{{t.mockClock}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- El reto -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 80px 20px; display: flex; flex-direction: column; gap: 36px">
+    <div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px">
+      <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #2B3FD1">{{t.probEyebrow}}</div>
+      <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(30px, 5vw, 40px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1">{{t.probTitle}}</h2>
+      <p style="margin: 0; font-size: 18px; line-height: 1.55; color: #4A5470">{{t.probSub}}</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px">
+      <sc-for list="{{t.problems}}" as="pr" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 18px; border-top: 2px solid #0E1630">
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700">{{pr.title}}</div>
+          <div style="font-size: 16px; line-height: 1.55; color: #3A4360">{{pr.body}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- Módulos -->
+  <span id="lista-espera"></span><section id="modulos" style="background: #F4F5FA">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 80px 20px; display: flex; flex-direction: column; gap: 36px">
+      <div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px">
+        <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #2B3FD1">{{t.modEyebrow}}</div>
+        <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(30px, 5vw, 40px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1">{{t.modTitle}}</h2>
+        <p style="margin: 0; font-size: 18px; line-height: 1.55; color: #4A5470">{{t.modSub}}</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px">
+        <sc-for list="{{modules}}" as="m" hint-placeholder-count="9">
+          <div style="{{m.cardStyle}}">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+              <span style="{{m.iconStyle}}" aria-hidden="true">{{m.code}}</span>
+              <span style="{{m.badgeStyle}}">{{m.badge}}</span>
+            </div>
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 19px; font-weight: 700">{{m.name}}</div>
+            <div style="font-size: 15px; line-height: 1.5; color: #3A4360">{{m.desc}}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; background: #FFFFFF; border: 1px solid #DDE0EA; border-radius: 8px">
+        <div style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700">{{t.wlTitle}}</div>
+          <div style="font-size: 15px; line-height: 1.5; color: #4A5470">{{t.wlBody}}</div>
+        </div>
+        <sc-if value="{{joined}}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="flex: 1 1 300px; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; color: #0A6B4F">
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#12A37E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            {{t.wlDone}}
+          </div>
+        </sc-if>
+        <sc-if value="{{notJoined}}" hint-placeholder-val="{{ true }}">
+          <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end">
+            <div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 6px">
+              <label for="wl-email" style="font-size: 13px; font-weight: 600">{{t.wlLabel}}</label>
+              <input id="wl-email" type="email" placeholder="{{t.wlPlaceholder}}" style="min-height: 46px; padding: 0 14px; border: 1px solid #C9CEDA; border-radius: 6px; font-family: inherit; font-size: 15px; box-sizing: border-box; width: 100%">
+            </div>
+            <button type="button" onClick="{{join}}" style="min-height: 46px; padding: 0 20px; border: none; border-radius: 6px; background: #0E1630; color: #FFFFFF; font-size: 15px; font-weight: 600">{{t.wlButton}}</button>
+            <div style="flex: 1 1 100%; font-size: 12px; line-height: 1.5; color: #4A5470">{{t.wlConsent}} <a href="/privacidad">{{t.wlPrivacy}}</a>.</div>
+            <label style="flex: 1 1 100%; display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px; color: #3A4360"><input id="wl-optout" type="checkbox" style="width: 18px; height: 18px; margin: 0; accent-color: #2B3FD1">{{t.wlOptOut}}</label>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cómo funciona -->
+  <section id="como" style="max-width: 1200px; margin: 0 auto; padding: 80px 20px; display: flex; flex-direction: column; gap: 36px">
+    <div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px">
+      <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #2B3FD1">{{t.howEyebrow}}</div>
+      <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(30px, 5vw, 40px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1">{{t.howTitle}}</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 32px">
+      <sc-for list="{{t.steps}}" as="st" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 12px">
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 44px; font-weight: 800; color: #2B3FD1; line-height: 1">{{st.n}}</div>
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700">{{st.title}}</div>
+          <div style="font-size: 16px; line-height: 1.55; color: #3A4360">{{st.body}}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+      <span style="font-size: 14px; color: #4A5470">{{t.signInWith}}</span>
+      <sc-for list="{{providers}}" as="pv" hint-placeholder-count="3">
+        <span style="display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid #DDE0EA; border-radius: 100px; font-size: 14px; font-weight: 600; color: #0E1630">{{pv}}</span>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- Para quién -->
+  <section style="background: #0E1630; color: #FFFFFF">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 80px 20px; display: flex; flex-direction: column; gap: 36px">
+      <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(30px, 5vw, 40px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; max-width: 760px">{{t.whoTitle}}</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px">
+        <sc-for list="{{t.who}}" as="w" hint-placeholder-count="3">
+          <div style="display: flex; flex-direction: column; gap: 10px; padding: 26px; background: #18224A; border-radius: 8px">
+            <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #3FD3A6">{{w.role}}</div>
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700">{{w.title}}</div>
+            <div style="font-size: 15px; line-height: 1.55; color: #C9CEE8">{{w.body}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- Precios resumen -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 80px 20px; display: flex; flex-direction: column; gap: 32px">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px">
+      <div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+        <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #2B3FD1">{{t.priceEyebrow}}</div>
+        <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(30px, 5vw, 40px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1">{{t.priceTitle}}</h2>
+        <p style="margin: 0; font-size: 18px; line-height: 1.55; color: #4A5470">{{t.priceSub}}</p>
+      </div>
+      <a href="/precios" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border: 1px solid #2B3FD1; color: #2B3FD1; border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: 600">{{t.priceCta}}</a>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px">
+      <sc-for list="{{priceCards}}" as="pc" hint-placeholder-count="4">
+        <div style="{{pc.cardStyle}}">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 26px">
+            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700">{{pc.name}}</span>
+            <sc-if value="{{pc.badge}}" hint-placeholder-val="{{ false }}"><span style="{{pc.badgeStyle}}">{{pc.badge}}</span></sc-if>
+          </div>
+          <div style="{{pc.subStyle}}">{{pc.sub}}</div>
+          <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px">
+            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15">{{pc.price}}</span>
+            <span style="{{pc.unitStyle}}">{{pc.unit}}</span>
+          </div>
+          <div style="{{pc.noteStyle}}">{{pc.note}}</div>
+          <sc-if value="{{pc.cta}}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top: auto; padding-top: 8px; display: flex; flex-direction: column; gap: 8px">
+              <a href="{{pc.ctaHref}}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; background: #FFFFFF; color: #0E1630; font-weight: 600; font-size: 15px; border-radius: 6px; text-decoration: none">{{pc.cta}}</a>
+              <a href="mailto:ventas@korporia.com" style="font-size: 13px; color: #C9CEE8; text-align: center; text-decoration: underline">{{pc.ctaAlt}}</a>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size: 14px; line-height: 1.5; color: #4A5470">{{t.priceFoot}} <a href="/precios">{{t.priceFootLink}}</a>{{t.priceFootAnd}}<a href="/terminos">{{t.footTerms}}</a>.</div>
+  </section>
+
+  <!-- Preguntas frecuentes -->
+  <section id="faq" style="background: #F4F5FA">
+    <div style="max-width: 880px; margin: 0 auto; padding: 80px 20px; display: flex; flex-direction: column; gap: 28px">
+      <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(30px, 5vw, 40px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1">{{t.faqTitle}}</h2>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <sc-for list="{{faqs}}" as="q" hint-placeholder-count="7">
+          <div style="background: #FFFFFF; border: 1px solid #DDE0EA; border-radius: 8px">
+            <button type="button" onClick="{{q.toggle}}" aria-expanded="{{q.expanded}}" style="width: 100%; min-height: 60px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: transparent; border: none; text-align: left; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 17px; font-weight: 700; color: #0E1630">
+              <span>{{q.q}}</span>
+              <span style="flex: none; font-size: 22px; font-weight: 500; color: #2B3FD1" aria-hidden="true">{{q.sign}}</span>
+            </button>
+            <sc-if value="{{q.open}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 0 20px 18px; font-size: 16px; line-height: 1.6; color: #3A4360">{{q.a}}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cierre -->
+  <section style="background: #2B3FD1; color: #FFFFFF">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 80px 20px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center">
+      <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(32px, 5.5vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; max-width: 760px">{{t.closeTitle}}</h2>
+      <p style="margin: 0; font-size: 18px; line-height: 1.55; color: #DCE0FA; max-width: 600px">{{t.closeSub}}</p>
+      <a href="https://app.korporia.com/registro" style="display: inline-flex; align-items: center; min-height: 54px; padding: 0 30px; background: #FFFFFF; color: #0E1630; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: 700">{{t.ctaTrial}}</a>
+    </div>
+  </section>
+
+  <!-- Pie -->
+  <footer style="background: #0E1630; color: #C9CEE8">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 48px 20px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 32px">
+      <div style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <svg width="28" height="28" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="4" width="10" height="40" fill="#FFFFFF"></rect><polygon points="18,24 32,4 44,4 30,24" fill="#12A37E"></polygon><polygon points="18,24 30,24 44,44 32,44" fill="#FFFFFF"></polygon></svg>
+          <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.025em; color: #FFFFFF">Korporia</span>
+        </div>
+        <div style="font-size: 14px">{{t.heroTitle}}</div>
+        <div style="font-size: 13px">Torreón, Coahuila, México</div>
+      </div>
+      <nav aria-label="{{t.footLabel}}" style="display: flex; flex-wrap: wrap; gap: 32px 40px; font-size: 14px">
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <span style="font-weight: 600; color: #FFFFFF">{{t.footProduct}}</span>
+          <a href="#modulos" style="color: #C9CEE8; text-decoration: none">{{t.navModules}}</a>
+          <a href="/precios" style="color: #C9CEE8; text-decoration: none">{{t.navPricing}}</a>
+          <a href="https://wa.me/528718963470" target="_blank" rel="noopener" style="color: #C9CEE8; text-decoration: none">{{t.footHelp}}</a>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <span style="font-weight: 600; color: #FFFFFF">Legal</span>
+          <a href="/terminos" style="color: #C9CEE8; text-decoration: none">{{t.footTerms}}</a>
+          <a href="/privacidad" style="color: #C9CEE8; text-decoration: none">{{t.footPrivacy}}</a>
+          <a href="/subencargados" style="color: #C9CEE8; text-decoration: none">{{t.footSub}}</a>
+          <a href="/cookies" style="color: #C9CEE8; text-decoration: none">{{t.footCookies}}</a>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <span style="font-weight: 600; color: #FFFFFF">{{t.footContact}}</span>
+          <a href="https://wa.me/528718963470" target="_blank" rel="noopener" style="color: #C9CEE8; text-decoration: none">WhatsApp +52 871 896 3470</a>
+          <a href="mailto:hola@korporia.com" style="color: #C9CEE8; text-decoration: none">hola@korporia.com</a>
+        </div>
+      </nav>
+    </div>
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px 32px; font-size: 12px; line-height: 1.6; color: #8A93B5">{{t.footFine}}</div>
+  </footer>
+</div>
