@@ -288,6 +288,7 @@ function NewEmployee({ me, onClose, onCreated }: { me: Me; onClose: () => void; 
 }
 
 function CredentialCard({ creds, onClose }: { creds: Credentials; onClose: () => void }) {
+  const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
   const url = window.location.origin;
   const message =
     `Hola ${creds.name.split(' ')[0]}, este es tu acceso a Korporia para checar tu entrada y salida:\n` +
@@ -296,25 +297,43 @@ function CredentialCard({ creds, onClose }: { creds: Credentials; onClose: () =>
   const phone = creds.phone?.replace(/\D/g, '');
   const wa = phone ? `https://wa.me/${phone.length === 10 ? `52${phone}` : phone}?text=${encodeURIComponent(message)}` : null;
 
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopied('ok');
+    } catch {
+      setCopied('fail');
+    }
+  }
+
+  // Ventana encima de todo: se ve aunque la lista esté desplazada
   return (
-    <div className="notice ok" role="status">
-      <strong>Acceso de {creds.name}</strong>
-      <p style={{ color: 'var(--ink)', margin: '6px 0 10px' }}>
-        Código de empresa <b>{creds.code}</b> y número <b>{creds.number}</b>. Antes de su primera checada, tómale la foto de registro con
-        el botón Tomar foto.
-      </p>
-      <div className="toolbar">
-        {wa && (
-          <a className="btn small solid" href={wa} target="_blank" rel="noreferrer">
-            Enviar por WhatsApp
-          </a>
+    <div className="lightbox" role="dialog" aria-modal="true" aria-labelledby="creds-title" onClick={onClose}>
+      <div className="sheet" style={{ width: 'min(100%, 460px)' }} onClick={(e) => e.stopPropagation()}>
+        <h2 id="creds-title">Acceso de {creds.name}</h2>
+        <p className="muted">
+          Korporia no envía el mensaje por sí sola: ábrelo en WhatsApp o cópialo y mándalo tú. Antes de su primera checada, tómale la foto
+          de registro con el botón Tomar foto.
+        </p>
+        <pre className="message-preview">{message}</pre>
+        {!wa && (
+          <div className="notice warn">Este colaborador no tiene celular registrado. Copia el mensaje y envíaselo por el medio que prefieras.</div>
         )}
-        <button className="btn small" onClick={() => void navigator.clipboard?.writeText(message)}>
-          Copiar mensaje
-        </button>
-        <button className="btn small quiet" onClick={onClose}>
-          Cerrar
-        </button>
+        {copied === 'ok' && <div className="notice ok">Mensaje copiado. Pégalo en WhatsApp o en un SMS.</div>}
+        {copied === 'fail' && <div className="notice error">Tu navegador no permitió copiar. Selecciona el texto de arriba y cópialo a mano.</div>}
+        <div className="toolbar">
+          {wa && (
+            <a className="btn solid" href={wa} target="_blank" rel="noreferrer">
+              Abrir en WhatsApp
+            </a>
+          )}
+          <button className={`btn ${wa ? '' : 'solid'}`} onClick={() => void copy()}>
+            Copiar mensaje
+          </button>
+          <button className="btn quiet" onClick={onClose}>
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   );
