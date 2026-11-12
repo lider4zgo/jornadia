@@ -35,20 +35,20 @@
   </header>
 
   <!-- Encabezado -->
-  <section style="max-width: 1200px; margin: 0 auto; padding: 56px 20px 28px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center">
+  <section style="max-width: 1200px; margin: 0 auto; padding: 56px 20px 28px; display: flex; flex-direction: column; align-items: flex-start; gap: 16px">
     <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #2B3FD1">{{t.eyebrow}}</div>
-    <h1 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(34px, 6vw, 48px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; max-width: 780px">{{t.title}}</h1>
-    <p style="margin: 0; font-size: clamp(16px, 2.2vw, 18px); line-height: 1.55; color: #4A5470; max-width: 660px">{{t.sub}}</p>
+    <h1 style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(34px, 6vw, 48px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; max-width: 960px">{{t.title}}</h1>
+    <p style="margin: 0; font-size: clamp(16px, 2.2vw, 18px); line-height: 1.55; color: #4A5470; max-width: 960px">{{t.sub}}</p>
   </section>
 
   <!-- Controles -->
-  <section style="max-width: 1200px; margin: 0 auto; padding: 0 20px 32px; display: flex; flex-direction: column; align-items: center; gap: 16px">
-    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px">
+  <section style="max-width: 1200px; margin: 0 auto; padding: 0 20px 32px; display: flex; flex-direction: column; align-items: flex-start; gap: 16px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 12px">
       <label for="emp-num" style="font-size: 16px; font-weight: 600">{{t.empQ}}</label>
       <input id="emp-num" type="number" min="1" max="500" value="{{emp}}" onChange="{{onEmp}}" style="width: 96px; min-height: 44px; padding: 0 12px; border: 1px solid #C9CEDA; border-radius: 6px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700; color: #0E1630; text-align: center; box-sizing: border-box">
     </div>
-    <input type="range" min="1" max="500" value="{{emp}}" onChange="{{onEmp}}" aria-label="{{t.empAria}}" style="width: 100%; max-width: 560px">
-    <div role="group" aria-label="{{t.chipsAria}}" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px">
+    <input type="range" min="1" max="500" value="{{emp}}" onChange="{{onEmp}}" aria-label="{{t.empAria}}" style="width: 100%; max-width: 800px">
+    <div role="group" aria-label="{{t.chipsAria}}" style="display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px">
       <sc-for list="{{chips}}" as="c" hint-placeholder-count="6">
         <button type="button" onClick="{{c.pick}}" aria-pressed="{{c.pressed}}" style="{{c.style}}">{{c.label}}</button>
       </sc-for>
