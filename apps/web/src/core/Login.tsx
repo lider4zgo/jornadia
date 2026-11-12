@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { api, ApiError, NetworkError } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { Mark, WhatsAppLink } from '../common';
+import { Logo, WhatsAppLink } from '../common';
 
 const CODE_KEY = 'korporia-company-code';
 
@@ -90,10 +90,7 @@ export function Login() {
   return (
     <div className="shell">
       <div className="content" style={{ paddingTop: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Mark className="mark" />
-          <h1>Korporia</h1>
-        </div>
+        <Logo as="h1" size={30} />
         <p className="muted">Registra tu entrada y salida con selfie y ubicación.</p>
 
         <div className="segmented" role="group" aria-label="Tipo de cuenta">

@@ -1,28 +1,33 @@
-/* Jornadia — sistema visual
-   Pensado para leerse bajo el sol, con guantes y en un Android de gama media:
-   contraste alto, áreas táctiles grandes y un solo color de acción. */
+/* Korporia — sistema visual de la app
+   La tipografía manda y la geometría no invade (referencia SAP / Microsoft).
+   Se lee bajo el sol y en un Android de gama media: contraste alto,
+   áreas táctiles grandes y un solo color de acción (índigo). */
 
 :root {
-  --ink: #12305a;          /* azul tinta: marca y texto principal */
-  --ink-soft: #2a4a78;
-  --field: #f5f7fa;        /* fondo frío */
+  /* Korporia · paleta "Índigo estructural" (identidad aprobada el 3 nov 2026) */
+  --ink: #0e1630;          /* tinta: texto, wordmark, fondos oscuros */
+  --ink-soft: #26304f;
+  --field: #f4f5fa;        /* niebla: fondos y tarjetas */
   --paper: #ffffff;
-  --slate: #52627a;        /* texto secundario */
-  --line: #d5dbe4;
-  --safety: #f2600c;       /* naranja de seguridad: solo la acción principal */
-  --safety-press: #c94d06;
-  --go: #17803d;           /* confirmación */
-  --go-tint: #e6f4ea;
+  --slate: #4a5470;        /* pizarra: texto secundario */
+  --line: #dde0ea;
+  --action: #2b3fd1;       /* índigo: color de marca, botones y enlaces */
+  --action-press: #2233a8;
+  --action-tint: #eceefc;
+  --growth: #12a37e;       /* verde crecimiento: brazo de la K, indicadores positivos */
+  --jornada: #f0a23b;      /* ámbar: solo el módulo Korporia Jornada */
+  --go: #0b7a5e;           /* confirmación (verde con contraste para texto) */
+  --go-tint: #e3f5ef;
   --stop: #b42318;         /* error / alerta */
   --stop-tint: #fdecea;
   --warn: #8a5a00;
   --warn-tint: #fff4d6;
 
-  --font-display: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
-  --font-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
-  --radius-control: 14px;
-  --radius-sheet: 22px;
+  --radius-control: 10px;
+  --radius-sheet: 16px;
   --tap: 56px;
 
   color-scheme: light;
@@ -55,7 +60,8 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   line-height: 1.15;
   margin: 0;
 }
@@ -67,7 +73,7 @@ p { margin: 0; }
 a { color: var(--ink); }
 
 :focus-visible {
-  outline: 3px solid var(--safety);
+  outline: 3px solid var(--action);
   outline-offset: 2px;
 }
 
@@ -122,6 +128,14 @@ a { color: var(--ink); }
   width: 36px;
   height: 36px;
   flex: none;
+}
+
+/* Logo: símbolo K + nombre en Plus Jakarta Sans Bold, espaciado −2.5 % */
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ink);
 }
 
 .content {
@@ -214,17 +228,17 @@ button {
 
 /* La acción principal: grande, naranja, imposible de no ver */
 .btn.primary {
-  background: var(--safety);
-  border-color: var(--safety);
+  background: var(--action);
+  border-color: var(--action);
   color: #fff;
   min-height: 88px;
   font-size: 1.6rem;
   border-radius: var(--radius-sheet);
-  box-shadow: 0 6px 0 var(--safety-press);
+  box-shadow: 0 6px 0 var(--action-press);
 }
 .btn.primary:active {
   transform: translateY(4px);
-  box-shadow: 0 2px 0 var(--safety-press);
+  box-shadow: 0 2px 0 var(--action-press);
 }
 .btn.solid {
   background: var(--ink);
@@ -318,7 +332,7 @@ input.pin {
   font-size: 0.98rem;
 }
 .notice.error { background: var(--stop-tint); border-color: #f1b8b2; color: var(--stop); }
-.notice.ok { background: var(--go-tint); border-color: #b5dcc0; color: var(--go); }
+.notice.ok { background: var(--go-tint); border-color: #a7dcc9; color: var(--go); }
 .notice.warn { background: var(--warn-tint); border-color: #f0d68c; color: var(--warn); }
 .notice strong { display: block; margin-bottom: 2px; }
 
@@ -346,7 +360,7 @@ input.pin {
   border-radius: 50%;
   background: currentColor;
 }
-.chip.go { color: var(--go); border-color: #b5dcc0; }
+.chip.go { color: var(--go); border-color: #a7dcc9; }
 .chip.stop { color: var(--stop); border-color: #f1b8b2; background: var(--stop-tint); }
 .chip.warn { color: var(--warn); border-color: #f0d68c; background: var(--warn-tint); }
 
@@ -383,7 +397,7 @@ input.pin {
   transform: scaleX(-1);
   border-radius: 50% / 42%;
   border: 6px solid rgba(255, 255, 255, 0.35);
-  background: #0a1c36;
+  background: #0e1630;
   transition: border-color 0.25s ease;
 }
 .viewfinder[data-desktop] video {

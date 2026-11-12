@@ -1,14 +1,43 @@
 import { useEffect, useState } from 'react';
 import { serverNow } from './lib/clock';
 
-export function Mark({ className = 'mark' }: { className?: string }) {
+const K_COLORS = {
+  korporia: { stem: '#2B3FD1', arm: '#12A37E' },
+  jornada: { stem: '#0E1630', arm: '#F0A23B' },
+} as const;
+
+/**
+ * Símbolo K de Korporia (retícula de 48 unidades): fuste y pierna en índigo,
+ * brazo que sube en verde. Submarca de módulo: fuste y pierna en tinta, brazo del color del módulo.
+ */
+export function Mark({
+  className = 'mark',
+  variant = 'korporia',
+  size,
+}: {
+  className?: string;
+  variant?: keyof typeof K_COLORS;
+  size?: number;
+}) {
+  const c = K_COLORS[variant];
   return (
-    <svg className={className} viewBox="0 0 512 512" aria-hidden="true">
-      <rect width="512" height="512" rx="112" fill="#12305A" />
-      <path d="M256 84c-82 0-148 64-148 144 0 104 148 216 148 216s148-112 148-216c0-80-66-144-148-144z" fill="#F5F7FA" />
-      <circle cx="256" cy="228" r="86" fill="#12305A" />
-      <path d="M256 168v64l42 26" fill="none" stroke="#F2600C" strokeWidth="22" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className={className} viewBox="0 0 48 48" width={size} height={size} aria-hidden="true">
+      <rect x="6" y="4" width="10" height="40" fill={c.stem} />
+      <polygon points="18,24 32,4 44,4 30,24" fill={c.arm} />
+      <polygon points="18,24 30,24 44,44 32,44" fill={c.stem} />
     </svg>
+  );
+}
+
+/** Logo horizontal: símbolo + nombre. */
+export function Logo({ size = 28, as: Tag = 'span' }: { size?: number; as?: 'span' | 'h1' }) {
+  return (
+    <Tag className="logo" style={{ display: 'inline-flex', alignItems: 'center', gap: size * 0.3, margin: 0 }}>
+      <Mark className="" size={Math.round(size * 1.25)} />
+      <span className="wordmark" style={{ fontSize: size, lineHeight: 1 }}>
+        Korporia
+      </span>
+    </Tag>
   );
 }
 
@@ -47,7 +76,7 @@ export function WhatsAppLink({ number, text, label = 'Soporte' }: { number?: str
     <a className="whatsapp" href={href} target="_blank" rel="noreferrer">
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
         <path
-          fill="#17803D"
+          fill="#0B7A5E"
           d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"
         />
       </svg>
