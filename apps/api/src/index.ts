@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
 import type { AppEnv } from './env';
 import { companies } from './core/companies';
+import { employees } from './core/employees';
 import { me } from './core/me';
 import { members } from './core/members';
 import { MODULE_REGISTRY } from './modules';
@@ -37,6 +38,7 @@ app.use('/api/*', async (c, next) => {
 app.route('/api/core/me', me);
 app.route('/api/core/companies', companies);
 app.route('/api/core/members', members);
+app.route('/api/core/employees', employees);
 
 // Módulos: cada uno en /api/<módulo>
 for (const module of MODULE_REGISTRY) app.route(`/api/${module.key}`, module.routes);

@@ -8,6 +8,42 @@ import { adminClient, audit, coreDb, jornadaDb } from '../../lib/supabase';
 export const faces = new Hono<AppEnv>();
 faces.use('*', requireAuth);
 
+/**
+ * La empresa declara (o retira) que cuenta con el consentimiento por escrito del colaborador
+ * para usar su foto y ubicación. PUT /api/jornada/employees/:id/consent { confirmed: boolean }
+ */
+faces.put('/:id/consent', async (c) => {
+  const auth = c.get('auth');
+  const admin = adminClient(c.env);
+  const { data: employee } = await coreDb(admin).from('employees').select('id, company_id').eq('id', c.req.param('id')).maybeSingle();
+  if (!employee) throw new HTTPException(404, { message: 'Colaborador no encontrado.' });
+  requirePermission(auth, employee.company_id, 'core.personal.gestionar');
+  const { confirmed } = await c.req.json<{ confirmed?: unknown }>();
+  if (typeof confirmed !== 'boolean') throw new HTTPException(400, { message: 'Dato inválido.' });
+
+  const now = new Date().toISOString();
+  const { error } = await jornadaDb(admin)
+    .from('employee_settings')
+    .upsert(
+      {
+        employee_id: employee.id,
+        company_id: employee.company_id,
+        consent_confirmed_at: confirmed ? now : null,
+        consent_confirmed_by: confirmed ? auth.userId : null,
+      },
+      { onConflict: 'employee_id' },
+    );
+  if (error) throw new HTTPException(500, { message: 'No se pudo guardar el consentimiento.' });
+  await audit(c.env, {
+    company_id: employee.company_id,
+    actor_id: auth.userId,
+    action: confirmed ? 'jornada.consent.confirmed' : 'jornada.consent.withdrawn',
+    entity: 'jornada.employee_settings',
+    entity_id: employee.id,
+  });
+  return c.json({ ok: true, consent_confirmed_at: confirmed ? now : null });
+});
+
 /** Borra la foto de registro para tomarla de nuevo. */
 faces.delete('/:id/face', async (c) => {
   const auth = c.get('auth');

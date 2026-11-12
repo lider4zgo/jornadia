@@ -33,6 +33,7 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
   const canConfigure = can(me, 'jornada.configurar');
   const employeeLimit = company.subscription?.employee_limit ?? 0;
   const [enrolling, setEnrolling] = useState<EmployeeRow | null>(null);
+  const [editing, setEditing] = useState<EmployeeRow | null>(null);
   const [trackBreaks, setTrackBreaks] = useState(me.jornada?.settings?.track_breaks ?? false);
 
   async function toggleBreaks(value: boolean) {
@@ -121,6 +122,19 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
 
       {error && <div className="notice error">{error}</div>}
       {creds && <CredentialCard creds={creds} onClose={() => setCreds(null)} />}
+      {editing && (
+        <EditEmployee
+          me={me}
+          employee={editing}
+          canReactivate={active < employeeLimit}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            void load();
+            onChanged();
+          }}
+        />
+      )}
       {enrolling && (
         <EnrollFace
           employee={enrolling}
@@ -166,6 +180,7 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
                   <td>{e.employee_number}</td>
                   <td>
                     {e.full_name}
+                    {!e.active && <span className="chip stop" style={{ marginLeft: 6 }}>Baja</span>}
                     {e.position && <div className="muted" style={{ fontSize: '0.85rem' }}>{e.position}</div>}
                   </td>
                   <td>{me.sites?.find((s) => s.id === e.default_site_id)?.name ?? 'La más cercana'}</td>
@@ -183,6 +198,11 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
                       </button>
                     )}
                     {isManager && (
+                      <button className="btn small quiet" onClick={() => setEditing(e)}>
+                        Editar
+                      </button>
+                    )}
+                    {isManager && e.active && (
                       <button
                         className="btn small quiet"
                         onClick={() => setCreds({ name: e.full_name, phone: e.phone, code: company.code, number: e.employee_number })}
@@ -284,6 +304,139 @@ function NewEmployee({ me, onClose, onCreated }: { me: Me; onClose: () => void; 
         </button>
       </div>
     </form>
+  );
+}
+
+/** Edición del expediente básico, consentimiento y baja o reactivación del colaborador. */
+function EditEmployee({
+  me,
+  employee,
+  canReactivate,
+  onClose,
+  onSaved,
+}: {
+  me: Me;
+  employee: EmployeeRow;
+  canReactivate: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [number, setNumber] = useState(employee.employee_number);
+  const [name, setName] = useState(employee.full_name);
+  const [position, setPosition] = useState(employee.position ?? '');
+  const [phone, setPhone] = useState(employee.phone ?? '');
+  const [site, setSite] = useState(employee.default_site_id ?? '');
+  const [consent, setConsent] = useState(Boolean(employee.consent_confirmed_at));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/api/core/employees/${employee.id}`, {
+        method: 'PATCH',
+        body: { employee_number: number, full_name: name, position, phone, default_site_id: site || null },
+      });
+      if (consent !== Boolean(employee.consent_confirmed_at)) {
+        await api(`/api/jornada/employees/${employee.id}/consent`, { method: 'PUT', body: { confirmed: consent } });
+      }
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudieron guardar los cambios.');
+      setBusy(false);
+    }
+  }
+
+  async function setActive(active: boolean) {
+    const msg = active
+      ? `¿Reactivar a ${employee.full_name}? Podrá volver a checar.`
+      : `¿Dar de baja a ${employee.full_name}? Ya no podrá entrar ni checar. Sus registros se conservan.`;
+    if (!confirm(msg)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/api/core/employees/${employee.id}`, { method: 'PATCH', body: { active } });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo cambiar el estado.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="lightbox" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <form className="sheet" onSubmit={save} style={{ width: 'min(100%, 560px)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h2 id="edit-title">Editar colaborador</h2>
+        <div className="form-grid">
+          <label className="field">
+            Número de empleado
+            <input value={number} onChange={(e) => setNumber(e.target.value)} required pattern="[A-Za-z0-9-]+" />
+          </label>
+          <label className="field">
+            Nombre completo
+            <input value={name} onChange={(e) => setName(e.target.value)} required />
+          </label>
+          <label className="field">
+            Puesto <small>opcional</small>
+            <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Ej. Oficial electricista" />
+          </label>
+          <label className="field">
+            Celular <small>para enviarle su acceso por WhatsApp</small>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="871 123 4567" />
+          </label>
+          <label className="field">
+            Obra habitual
+            <select value={site} onChange={(e) => setSite(e.target.value)}>
+              <option value="">La más cercana al checar</option>
+              {me.sites?.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {number !== employee.employee_number && (
+          <div className="notice warn">
+            El colaborador entrará con el nuevo número. Avísale y, si quieres, reenvíale su acceso después de guardar.
+          </div>
+        )}
+        <label className="check">
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+          <span>
+            Confirmo que la empresa cuenta con el consentimiento por escrito de este colaborador para usar su foto y ubicación al registrar
+            su jornada.
+          </span>
+        </label>
+        {error && <div className="notice error">{error}</div>}
+        <div className="toolbar">
+          <button className="btn solid" type="submit" disabled={busy}>
+            {busy ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+          <button className="btn quiet" type="button" onClick={onClose} disabled={busy}>
+            Cancelar
+          </button>
+          <span style={{ flex: 1 }} />
+          {employee.active ? (
+            <button className="btn quiet danger" type="button" onClick={() => void setActive(false)} disabled={busy}>
+              Dar de baja
+            </button>
+          ) : (
+            <button
+              className="btn quiet"
+              type="button"
+              onClick={() => void setActive(true)}
+              disabled={busy || !canReactivate}
+              title={canReactivate ? undefined : 'Llegaste al límite de colaboradores activos de tu plan'}
+            >
+              Reactivar
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
   );
 }
 

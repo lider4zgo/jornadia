@@ -715,3 +715,5 @@ tr:last-child td { border-bottom: 0; }
   margin: 12px 0;
   user-select: text;
 }
+
+.btn.danger { color: var(--stop); }
