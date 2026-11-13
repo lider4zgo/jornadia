@@ -88,6 +88,16 @@ export default Component;
   template = patch(template, 'https://korporia.com/', '/', { all: true, file });
   if (/href="#"/.test(template)) throw new Error(`${file}: quedó un enlace sin destino (href="#")`);
 
+  // Blog (Dirección, 13 nov): enlace junto a "Precios" en el menú, el menú del celular y el pie
+  template = patchRe(
+    template,
+    /(<a href="\/precios"( style="[^"]*")>\{\{t\.navPricing\}\}<\/a>)/g,
+    '$1\n        <a href="{{t.navBlogHref}}"$2>{{t.navBlog}}</a>',
+    { file },
+  );
+  script = patch(script, "navPricing: 'Precios',", "navPricing: 'Precios', navBlog: 'Blog', navBlogHref: '/blog/',", { file });
+  script = patch(script, "navPricing: 'Pricing',", "navPricing: 'Pricing', navBlog: 'Blog', navBlogHref: '/en/blog/',", { file });
+
   // Lista de espera real: id para el enlace desde precios, casilla de exclusión y envío a la API
   template = patch(template, '<input type="checkbox" style="width: 18px; height: 18px; margin: 0; accent-color: #2B3FD1">{{t.wlOptOut}}', '<input id="wl-optout" type="checkbox" style="width: 18px; height: 18px; margin: 0; accent-color: #2B3FD1">{{t.wlOptOut}}', { file });
   template = patch(template, '<section id="modulos"', '<span id="lista-espera"></span><section id="modulos"', { file });

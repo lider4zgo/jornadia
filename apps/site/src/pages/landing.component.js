@@ -36,7 +36,7 @@ renderVals() {
 const lang = this.state.lang === 'en' ? 'en' : 'es';
 const T = {
 es: {
-navLabel: 'Principal', navModules: 'Módulos', navHow: 'Cómo funciona', navPricing: 'Precios', navFaq: 'Preguntas', navLogin: 'Iniciar sesión', navTrial: 'Empezar gratis', menu: 'Menú', langLabel: 'Idioma',
+navLabel: 'Principal', navModules: 'Módulos', navHow: 'Cómo funciona', navPricing: 'Precios', navBlog: 'Blog', navBlogHref: '/blog/', navFaq: 'Preguntas', navLogin: 'Iniciar sesión', navTrial: 'Empezar gratis', menu: 'Menú', langLabel: 'Idioma',
 heroBadge: 'Diseñado para el registro electrónico de jornada 2027', heroTitle: 'Crece con estructura.',
 heroSub: 'Hoy, asistencia y personal. Muy pronto, nómina y finanzas, todo en un solo lugar. La estructura de una gran empresa, al precio y a la medida de la tuya.',
 ctaTrial: 'Empezar gratis', ctaPricing: 'Ver precios', perks: ['Korporia Starter: gratis hasta 25 empleados', 'Sin tarjeta para empezar', 'Sin plazos forzosos'],
@@ -56,11 +56,11 @@ wlTitle: 'Anótate en la lista de espera', wlBody: 'Te avisaremos cuando Despegu
 wlLabel: 'Correo', wlPlaceholder: 'tu@empresa.com', wlButton: 'Avisarme', wlConsent: 'Korporia (Erik Rodrigo Martínez Canales) usará tu correo para avisarte cuando los planes y módulos estén disponibles y, si no lo rechazas, para enviarte novedades y encuestas. Consulta el', wlPrivacy: 'aviso de privacidad', wlOptOut: 'No deseo recibir novedades ni encuestas', wlDone: 'Listo. Te avisaremos por correo.',
 howEyebrow: 'Cómo funciona', howTitle: 'En marcha el mismo día',
 steps: [
-{ n: '01', title: 'Crea tu cuenta', body: 'Entra con un clic usando tu cuenta de Google, Microsoft o Apple, o regístrate con tu correo. Sin tarjeta y sin hablar con un vendedor.' },
+{ n: '01', title: 'Crea tu cuenta', body: 'Entra con tu correo y contraseña, o con Google o Microsoft. Sin tarjeta y sin hablar con un vendedor.' },
 { n: '02', title: 'Configura tu empresa', body: 'Un asistente te guía paso a paso: da de alta tus sucursales u obras con su geocerca, define los horarios y carga a tu personal desde una plantilla de Excel.' },
 { n: '03', title: 'Invita a tu equipo', body: 'Cada trabajador recibe un enlace por WhatsApp, lo abre en el navegador de su celular y registra su entrada con selfie o PIN. No instala nada, y si se queda sin señal, el registro se guarda y se envía después.' }
 ],
-signInWith: 'Inicia sesión con:', emailLabel: 'Correo electrónico',
+signInWith: 'Inicia sesión con:', emailLabel: 'Correo y contraseña',
 whoTitle: 'Hecho para quienes sostienen la empresa',
 who: [
 { role: 'Dueños', title: 'Control sin estar encima de todo', body: 'Quién llegó y cuántas horas extra llevas, desde tu celular. Pronto, también tu nómina y tu flujo de efectivo.' },
@@ -80,7 +80,7 @@ faqTitle: 'Preguntas frecuentes',
 faq: [
 ['¿Qué es el registro electrónico de jornada?', 'Es la obligación de registrar electrónicamente la entrada y salida de tus trabajadores, exigible desde el 1 de enero de 2027. Korporia Jornada lo genera de forma automática, con el acuerdo del trabajador, y cada corrección queda registrada con fecha y responsable, sin posibilidad de borrarla. Lo actualizaremos cuando la STPS publique sus reglas.'],
 ['¿Qué incluye Korporia Starter?', 'Es el plan gratuito para empresas de hasta 25 empleados. Los primeros 3 meses incluye el checador completo y RH básico (expediente, contratación, vacaciones e incidencias y portal del empleado); del mes 4 al 6, RH básico. Al día 90 el checador se deshabilita y conservas la consulta y la exportación de tus registros; para seguir registrando, contratas Jornada. Al terminar el mes 6, tu cuenta pasa a solo lectura con exportación por 90 días; después, la información se archiva y se elimina a los 12 meses. Incluye 1 razón social, 1 administrador y 50 MB de documentos por empleado activo (promedio de la cuenta, archivos de hasta 10 MB), con una cuenta por RFC. Funciona en modo demo: no timbra ni envía movimientos al IMSS. El soporte es por el centro de ayuda.'],
-['¿Cómo inicio sesión?', 'Con un clic, usando tu cuenta de Google, Microsoft o Apple: solo confirmas el acceso y entras. También puedes registrarte con tu correo y recibir un código para entrar, sin contraseñas que recordar.'],
+['¿Cómo inicio sesión?', 'Entra con tu correo y contraseña, o con tu cuenta de Google o Microsoft: solo confirmas el acceso y entras.'],
 ['¿Mis trabajadores necesitan instalar algo?', 'No. Korporia funciona completo en el navegador del celular (Android o iPhone) o de la computadora. El trabajador solo abre su enlace; si quiere, puede guardar un acceso directo en su pantalla de inicio. Si se queda sin señal, el registro se guarda y se sincroniza al volver a conectarse.'],
 ['¿Y si un trabajador no quiere tomarse una selfie?', 'La verificación facial es opcional. Quien no la autorice puede registrar su entrada con PIN y ubicación, sin ninguna consecuencia.'],
 ['¿Korporia timbra mi nómina?', 'Sí, con el plan Despegue, que llega pronto: Korporia timbrará tu nómina, enviará los movimientos al IMSS y preparará la dispersión. Las pruebas gratuitas funcionan en modo demo, sin validez fiscal.'],
@@ -93,7 +93,7 @@ footLabel: 'Pie de página', footProduct: 'Producto', footHelp: 'Centro de ayuda
 footFine: 'Korporia es un nombre comercial de Erik Rodrigo Martínez Canales. Precios en pesos mexicanos más IVA. Las funciones marcadas “Próximamente” se activan conforme estén listas. La vista del producto es ilustrativa, con cifras de ejemplo.'
 },
 en: {
-navLabel: 'Main', navModules: 'Modules', navHow: 'How it works', navPricing: 'Pricing', navFaq: 'FAQ', navLogin: 'Log in', navTrial: 'Start free', menu: 'Menu', langLabel: 'Language',
+navLabel: 'Main', navModules: 'Modules', navHow: 'How it works', navPricing: 'Pricing', navBlog: 'Blog', navBlogHref: '/en/blog/', navFaq: 'FAQ', navLogin: 'Log in', navTrial: 'Start free', menu: 'Menu', langLabel: 'Language',
 heroBadge: 'Designed for Mexico’s 2027 electronic time-tracking rule', heroTitle: 'Grow with structure.',
 heroSub: 'Today, attendance and people. Coming soon, payroll and finance, all in one place. The structure of a large company, sized and priced for yours.',
 ctaTrial: 'Start free', ctaPricing: 'See pricing', perks: ['Korporia Starter: free for up to 25 employees', 'No card to start', 'No long-term contracts'],
@@ -113,11 +113,11 @@ wlTitle: 'Join the waitlist', wlBody: 'We’ll let you know when Despegue, Full 
 wlLabel: 'Email', wlPlaceholder: 'you@company.com', wlButton: 'Notify me', wlConsent: 'Korporia (Erik Rodrigo Martínez Canales) will use your email to let you know when plans and modules are available and, unless you opt out, to send you news and surveys. See our', wlPrivacy: 'privacy notice', wlOptOut: 'I don’t want to receive news or surveys', wlDone: 'Done. We’ll let you know by email.',
 howEyebrow: 'How it works', howTitle: 'Up and running the same day',
 steps: [
-{ n: '01', title: 'Create your account', body: 'Sign in with one click using your Google, Microsoft or Apple account, or sign up with your email. No card and no sales call.' },
+{ n: '01', title: 'Create your account', body: 'Sign in with your email and password, or with Google or Microsoft. No card and no sales call.' },
 { n: '02', title: 'Set up your company', body: 'A guided assistant walks you through it: add your branches or job sites with their geofence, set schedules and upload your staff from an Excel template.' },
 { n: '03', title: 'Invite your team', body: 'Each worker gets a link on WhatsApp, opens it in their phone’s browser and clocks in with a selfie or PIN. Nothing to install, and if they lose signal, the record is saved and sent later.' }
 ],
-signInWith: 'Sign in with:', emailLabel: 'Email',
+signInWith: 'Sign in with:', emailLabel: 'Email and password',
 whoTitle: 'Built for the people who keep the business running',
 who: [
 { role: 'Owners', title: 'In control without micromanaging', body: 'Who showed up and how much overtime your team has, right from your phone. Soon, your payroll and cash flow too.' },
@@ -137,7 +137,7 @@ faqTitle: 'Frequently asked questions',
 faq: [
 ['What is electronic time tracking?', 'It is the legal requirement in Mexico to record your workers’ clock-in and clock-out times electronically, enforceable from January 1, 2027. Korporia Jornada creates that record automatically, with the worker’s agreement, and every correction is logged with date and author and can’t be deleted. We’ll update it when the STPS publishes its rules.'],
 ['What does Korporia Starter include?', 'It’s the free plan for companies with up to 25 employees. For the first 3 months it includes the full time clock and basic HR (employee records, hiring, time off and incidents, and the employee portal); from month 4 to 6, basic HR. On day 90 the time clock is turned off and you keep access to view and export your records; to keep clocking in, you subscribe to Jornada. After month 6, your account becomes read-only with export for 90 days; after that, your data is archived and deleted at 12 months. It includes 1 legal entity, 1 admin and 50 MB of documents per active employee (averaged across the account, files up to 10 MB), with one account per RFC. It runs in demo mode: it doesn’t stamp CFDI or file with IMSS. Support is through the help center.'],
-['How do I sign in?', 'With one click, using your Google, Microsoft or Apple account: just confirm access and you’re in. You can also sign up with your email and get a code to log in, with no passwords to remember.'],
+['How do I sign in?', 'Sign in with your email and password, or with your Google or Microsoft account: just confirm access and you’re in.'],
 ['Do my workers need to install anything?', 'No. Korporia runs entirely in the browser on any phone (Android or iPhone) or computer. Workers just open their link and can optionally save a shortcut to their home screen. If they lose signal, the record is saved and syncs once they’re back online.'],
 ['What if a worker doesn’t want to take a selfie?', 'Face verification is optional. Anyone who doesn’t authorize it can clock in with a PIN and location, with no consequences.'],
 ['Does Korporia stamp my payroll?', 'Yes, with the Despegue plan, coming soon: Korporia will stamp your payroll (CFDI), file the changes with IMSS and prepare the disbursement. Free trials run in demo mode, with no tax validity.'],
@@ -194,7 +194,7 @@ t,
 modules,
 priceCards,
 faqs,
-providers: ['Google', 'Microsoft', 'Apple', t.emailLabel],
+providers: [t.emailLabel, 'Google', 'Microsoft'],
 joined: !!this.state.joined,
 notJoined: !this.state.joined,
 join: () => {

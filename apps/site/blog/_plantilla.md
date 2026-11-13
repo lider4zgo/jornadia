@@ -3,7 +3,10 @@ title: Título del artículo
 description: Resumen de una o dos líneas para buscadores y redes.
 date: 2026-11-16
 author: Equipo Korporia
-image: /blog/nombre-de-la-imagen.jpg
+image: /blog/nombre-de-la-imagen.png
+image_alt: Descripción de la imagen para quien no la ve
+seo_title: Título para Google, máximo 60 caracteres (opcional)
+slug: direccion-propia (opcional; útil en la versión en inglés)
 draft: true
 ---
 

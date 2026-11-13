@@ -229,7 +229,12 @@ const write = (path, html) => {
   mkdirSync(dirname(join(OUT, path)), { recursive: true });
   writeFileSync(join(OUT, path), html);
 };
-const pathOf = (slug, lang) => (lang === 'es' ? `/blog/${slug}` : `/en/blog/${slug}`);
+// La versión en inglés puede tener su propia dirección (slug: en su encabezado)
+const pathOf = (slug, lang) => {
+  const own = posts.get(slug)?.[lang]?.meta.slug;
+  if (own && !/^[a-z0-9-]+$/.test(own)) throw new Error(`blog/${slug}: slug inválido (${own})`);
+  return lang === 'es' ? `/blog/${own || slug}` : `/en/blog/${own || slug}`;
+};
 
 for (const [slug, p] of visible) {
   for (const lang of ['es', 'en']) {
@@ -247,14 +252,14 @@ for (const [slug, p] of visible) {
 <h1>${esc(meta.title)}</h1>
 <p class="lead">${esc(meta.description)}</p>
 <div class="meta"><time datetime="${meta.date}">${fmtDate(meta.date, lang)}</time>${meta.author ? `<span>${t.by} ${esc(meta.author)}</span>` : ''}${other ? `<span>${other}</span>` : ''}</div>
-${meta.image ? `<img class="cover" src="${esc(meta.image)}" alt="">` : ''}
+${meta.image ? `<img class="cover" src="${esc(meta.image)}" alt="${esc(meta.image_alt)}" width="1200" height="630">` : ''}
 ${post.html}
 </article>
 ${shareBar(url, meta.title, lang)}
 ${ctaBox(lang)}
 </div>`;
     write(`${pathOf(slug, lang)}/index.html`, layout({
-      lang, title: `${meta.title} · Korporia`, description: meta.description, canonical: pathOf(slug, lang), alternates, image: meta.image, body, type: 'article',
+      lang, title: meta.seo_title || `${meta.title} · Korporia`, description: meta.description, canonical: pathOf(slug, lang), alternates, image: meta.image, body, type: 'article',
       jsonLd: { '@context': 'https://schema.org', '@type': 'BlogPosting', headline: meta.title, description: meta.description, datePublished: meta.date, inLanguage: t.lang, author: { '@type': meta.author ? 'Person' : 'Organization', name: meta.author || 'Korporia' }, publisher: { '@type': 'Organization', name: 'Korporia', logo: `${SITE}/icon-512.png` }, mainEntityOfPage: url, ...(meta.image ? { image: `${SITE}${meta.image}` } : {}) },
     }));
   }
