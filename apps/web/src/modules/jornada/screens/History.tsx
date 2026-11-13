@@ -25,7 +25,7 @@ export function History({ me }: { me: Me }) {
   const today = localDate(serverNow(), tz);
   const thisWeek = weekStart(today);
   const weeks = summarizeWeeks(buildShifts(rows.map((r) => ({ kind: r.kind, ts: punchTime(r) })), tz), {
-    limitHours: weeklyLimit(me.jornada),
+    limitForYear: (year) => weeklyLimit(me.jornada, year),
   });
   const current = weeks.find((w) => w.weekStart === thisWeek);
   const limit = weeklyLimit(me.jornada);

@@ -1,3 +1,4 @@
+import { LEGAL_URLS } from '@korporia/core';
 import { useEffect, useState, type ReactNode } from 'react';
 import { serverNow } from './lib/clock';
 
@@ -67,6 +68,26 @@ export function useOnline(): boolean {
 }
 
 const SUPPORT = (import.meta.env.VITE_SUPPORT_WHATSAPP as string | undefined) ?? '';
+export const SUPPORT_EMAIL = 'soporte@korporia.com';
+export const PRIVACY_EMAIL = 'privacidad@korporia.com';
+
+/** PLT-04: aviso de privacidad, derechos ARCO y términos, siempre a la mano. */
+export function LegalFooter() {
+  return (
+    <footer className="legal-footer">
+      <a href={LEGAL_URLS.privacidad} target="_blank" rel="noreferrer">
+        Aviso de privacidad
+      </a>
+      <a href={`mailto:${PRIVACY_EMAIL}?subject=${encodeURIComponent('Solicitud de derechos ARCO')}`}>Derechos ARCO</a>
+      <a href={LEGAL_URLS.terminos} target="_blank" rel="noreferrer">
+        Términos
+      </a>
+      <a href="https://korporia.com/subencargados" target="_blank" rel="noreferrer">
+        Subencargados
+      </a>
+    </footer>
+  );
+}
 
 export function WhatsAppLink({ number, text, label = 'Soporte' }: { number?: string | null; text?: string; label?: string }) {
   const n = (number || SUPPORT).replace(/\D/g, '');

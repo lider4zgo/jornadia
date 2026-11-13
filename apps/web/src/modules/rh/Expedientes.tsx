@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   CONTRACT_TYPES,
+  SAT_CONTRACT_REGIMES,
   DOCUMENT_KINDS,
   INCAPACITY_TYPES,
   isValidCurp,
@@ -234,6 +235,7 @@ function ProfileForm({ data, structure, canEdit, onSaved }: { data: Detail; stru
     position_id: str(p.position_id),
     manager_id: str(p.manager_id),
     contract_type: str(p.contract_type),
+    sat_regime: str(p.sat_regime || '02'),
     contract_start: str(p.contract_start),
     contract_end: str(p.contract_end),
     probation_end: str(p.probation_end),
@@ -323,6 +325,16 @@ function ProfileForm({ data, structure, canEdit, onSaved }: { data: Detail; stru
                 {Object.entries(CONTRACT_TYPES).map(([k, v]) => (
                   <option key={k} value={k}>
                     {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              Régimen de contratación (SAT)
+              <select value={f.sat_regime} onChange={set('sat_regime')}>
+                {Object.entries(SAT_CONTRACT_REGIMES).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {k} · {v}
                   </option>
                 ))}
               </select>
@@ -696,7 +708,7 @@ function Alta({ me, structure, canEdit, onClose }: { me: Me; structure: Structur
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [created, setCreated] = useState<{ id: string; name: string; number: string; phone: string | null } | null>(null);
   const [f, setF] = useState({ employee_number: '', full_name: '', phone: '', default_site_id: '', hired_at: '' });
-  const [job, setJob] = useState({ position_id: '', department_id: '', manager_id: '', contract_type: 'indeterminado', contract_start: '', contract_end: '', probation_end: '' });
+  const [job, setJob] = useState({ position_id: '', department_id: '', manager_id: '', contract_type: 'indeterminado', sat_regime: '02', contract_start: '', contract_end: '', probation_end: '' });
   const [docs, setDocs] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   calendarDays,
+  isValidCompanyRfc,
+  normalizeOrigin,
   completedYears,
   isValidCurp,
   isValidNss,
@@ -93,5 +95,24 @@ describe('documentos del trabajador', () => {
     expect(text).toContain('expediente');
     expect(text).not.toContain('nómina, timbrar');
     expect(text).not.toContain('[');
+  });
+});
+
+describe('bloque 1 de la apertura', () => {
+  it('acepta RFC de persona moral y física para la empresa', () => {
+    expect(isValidCompanyRfc('ABC010203XY1')).toBe(true);
+    expect(isValidCompanyRfc('MACE880618E65')).toBe(true);
+    expect(isValidCompanyRfc('AB010203XY1')).toBe(false);
+  });
+  it('normaliza el origen del registro', () => {
+    expect(normalizeOrigin(' Guia-Reforma ')).toBe('guia-reforma');
+    expect(normalizeOrigin('d-pérez')).toBe('d-prez');
+    expect(normalizeOrigin('x')).toBeNull();
+    expect(normalizeOrigin(null)).toBeNull();
+  });
+  it('los días de descanso de la empresa no cuentan como vacaciones', () => {
+    // lunes 10 a viernes 14 de mayo de 2027; el 10 lo descansa la empresa
+    expect(workingDays('2027-05-10', '2027-05-14', [6, 7])).toBe(5);
+    expect(workingDays('2027-05-10', '2027-05-14', [6, 7], ['2027-05-10'])).toBe(4);
   });
 });

@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { companyCodeFromName, LEGAL_VERSIONS, STARTER, STARTER_LIMITS } from '@korporia/core';
+import { companyCodeFromName, isValidCompanyRfc, LEGAL_VERSIONS, normalizeOrigin, STARTER, STARTER_LIMITS } from '@korporia/core';
 import type { AppEnv } from '../env';
 import { invalidateAccess, requireAuth } from '../lib/auth';
 import { EMAIL_RE, str } from '../lib/input';
+import { RFC_TAKEN, rfcInUse } from '../lib/rfc';
 import { adminClient, audit, coreDb } from '../lib/supabase';
 
 /**
@@ -51,6 +52,9 @@ signup.post('/complete', requireAuth, async (c) => {
   const employees = Number(b.employees);
   const industry = str(b.industry, 60);
   const state = str(b.state, 60);
+  const rfc = str(b.rfc, 13).toUpperCase();
+  const phone = str(b.phone, 20).replace(/[^\d+]/g, '');
+  const origin = normalizeOrigin(b.origin);
   if (companyName.length < 2) throw new HTTPException(400, { message: 'Escribe el nombre de tu empresa.' });
   if (!Number.isInteger(employees) || employees < 1) throw new HTTPException(400, { message: 'Escribe cuántos empleados tiene tu empresa.' });
   if (employees > STARTER.maxEmployees) {
@@ -58,10 +62,15 @@ signup.post('/complete', requireAuth, async (c) => {
       message: `Korporia Starter es para equipos de hasta ${STARTER.maxEmployees} empleados. Escríbenos por WhatsApp y te ayudamos a empezar con Jornada.`,
     });
   }
+  // T-08: una cuenta Starter por empresa, con su RFC
+  if (!isValidCompanyRfc(rfc)) throw new HTTPException(400, { message: 'Escribe el RFC de tu empresa: 12 caracteres para persona moral o 13 para persona física.' });
+  if (phone.replace(/\D/g, '').length < 10) throw new HTTPException(400, { message: 'Escribe un teléfono de contacto de 10 dígitos.' });
   if (b.accept_terms !== true) throw new HTTPException(400, { message: 'Para continuar, acepta los términos y el aviso de privacidad.' });
   if (b.terms_version !== LEGAL_VERSIONS.terminos || b.privacy_version !== LEGAL_VERSIONS.privacidad) {
     throw new HTTPException(409, { message: 'Los términos se actualizaron. Recarga la página para ver la versión vigente.' });
   }
+
+  if (await rfcInUse(c.env, rfc)) throw new HTTPException(409, { message: RFC_TAKEN });
 
   const admin = adminClient(c.env);
   const core = coreDb(admin);
@@ -115,7 +124,7 @@ signup.post('/complete', requireAuth, async (c) => {
     // Checador hasta el día 90 y RH básico hasta el mes 6; después, solo lectura
     core.from('company_modules').update({ writable_until: clockUntil.toISOString() }).eq('company_id', companyId).eq('module_key', 'jornada'),
     core.from('company_modules').update({ writable_until: hrUntil.toISOString() }).eq('company_id', companyId).eq('module_key', 'rh'),
-    core.from('companies').update({ declared_employees: employees, industry: industry || null, state: state || null }).eq('id', companyId),
+    core.from('companies').update({ declared_employees: employees, industry: industry || null, state: state || null, tax_id: rfc, signup_phone: phone, signup_origin: origin }).eq('id', companyId),
     core.from('legal_acceptances').insert([
       { company_id: companyId, user_id: auth.userId, document: 'terminos', version: LEGAL_VERSIONS.terminos, ip, user_agent: userAgent },
       { company_id: companyId, user_id: auth.userId, document: 'privacidad', version: LEGAL_VERSIONS.privacidad, ip, user_agent: userAgent },
@@ -129,7 +138,7 @@ signup.post('/complete', requireAuth, async (c) => {
     const { data: user } = await admin.auth.admin.getUserById(auth.userId);
     if (user.user?.email) {
       await core.from('waitlist').upsert(
-        { email: user.user.email.toLowerCase(), marketing_opt_out: true, source: 'registro', consent_version: LEGAL_VERSIONS.privacidad, company_id: companyId },
+        { email: user.user.email.toLowerCase(), marketing_opt_out: true, source: 'registro', ...(origin ? { origin } : {}), consent_version: LEGAL_VERSIONS.privacidad, company_id: companyId },
         { onConflict: 'email' },
       );
     }
@@ -142,7 +151,7 @@ signup.post('/complete', requireAuth, async (c) => {
     action: 'company.signup',
     entity: 'core.companies',
     entity_id: companyId,
-    details: { plan: 'starter', employees, industry, state, terms: LEGAL_VERSIONS.terminos },
+    details: { plan: 'starter', employees, industry, state, origin, terms: LEGAL_VERSIONS.terminos },
   });
 
   return c.json({ company: { id: companyId, name: companyName, code } }, 201);
@@ -150,7 +159,7 @@ signup.post('/complete', requireAuth, async (c) => {
 
 /**
  * Lista de espera de Despegue, Full y módulos "Próximamente" (desde la landing, sin sesión).
- * POST /api/core/waitlist { email, lang?, marketing_opt_out?, source? }
+ * POST /api/core/waitlist { email, lang?, marketing_opt_out?, source?, origin? }
  */
 export const waitlist = new Hono<AppEnv>();
 
@@ -166,6 +175,8 @@ waitlist.post('/', async (c) => {
         lang: b.lang === 'en' ? 'en' : 'es',
         marketing_opt_out: b.marketing_opt_out === true,
         source: str(b.source, 30) || 'landing',
+        // Se conserva el primer origen si la persona vuelve a anotarse sin él
+        ...(normalizeOrigin(b.origin) ? { origin: normalizeOrigin(b.origin) } : {}),
         consent_version: LEGAL_VERSIONS.listaEspera,
       },
       { onConflict: 'email' },

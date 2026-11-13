@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { INDUSTRIES, LEGAL_URLS, LEGAL_VERSIONS, MX_STATES, STARTER } from '@korporia/core';
+import { INDUSTRIES, isValidCompanyRfc, LEGAL_URLS, LEGAL_VERSIONS, MX_STATES, normalizeOrigin, STARTER } from '@korporia/core';
 import { api, ApiError } from '../lib/api';
 import { navigate } from '../lib/router';
 import { Logo, Spinner, WhatsAppLink } from '../common';
@@ -13,6 +13,9 @@ type PendingSignup = {
   employees: number;
   industry: string;
   state: string;
+  rfc: string;
+  phone: string;
+  origin: string | null;
   marketing_opt_out: boolean;
   accept_terms: true;
   terms_version: string;
@@ -33,6 +36,18 @@ function readPending(): PendingSignup | null {
 }
 
 const SALES_WHATSAPP = '528718963470';
+
+/** Origen del registro (?origen= de la guía, el sitio o el enlace de un despacho); se guarda durante la visita. */
+const ORIGIN_KEY = 'korporia-origen';
+function readOrigin(): string | null {
+  try {
+    const fromUrl = normalizeOrigin(new URLSearchParams(window.location.search).get('origen'));
+    if (fromUrl) sessionStorage.setItem(ORIGIN_KEY, fromUrl);
+    return fromUrl ?? normalizeOrigin(sessionStorage.getItem(ORIGIN_KEY));
+  } catch {
+    return null;
+  }
+}
 
 /** Campos de la empresa y aceptación legal: los comparten el registro y "completa tu registro". */
 function CompanyFields({
@@ -77,6 +92,25 @@ function CompanyFields({
           </div>
         </div>
       )}
+      <div className="form-grid">
+        <label className="field">
+          RFC de la empresa
+          <input
+            value={value.rfc}
+            onChange={(e) => onChange({ rfc: e.target.value.toUpperCase().replace(/\s/g, '') })}
+            maxLength={13}
+            autoCapitalize="characters"
+            placeholder="12 o 13 caracteres"
+            required
+          />
+          {value.rfc.length >= 12 && !isValidCompanyRfc(value.rfc) && <span className="muted">Revisa el RFC.</span>}
+        </label>
+        <label className="field">
+          Teléfono de contacto
+          <input type="tel" value={value.phone} onChange={(e) => onChange({ phone: e.target.value })} inputMode="tel" autoComplete="tel" required />
+        </label>
+      </div>
+      <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>Una cuenta de Korporia Starter por empresa (RFC). No te mandamos SMS.</p>
       <div className="form-grid">
         <label className="field">
           Giro
@@ -135,6 +169,9 @@ const emptyForm = (): FormState => ({
   employees: 0,
   industry: '',
   state: '',
+  rfc: '',
+  phone: '',
+  origin: null,
   marketing_opt_out: false,
   accept: false,
 });
@@ -145,6 +182,8 @@ const formValid = (f: FormState) =>
   f.employees <= STARTER.maxEmployees &&
   Boolean(f.industry) &&
   Boolean(f.state) &&
+  isValidCompanyRfc(f.rfc) &&
+  f.phone.replace(/\D/g, '').length >= 10 &&
   f.accept;
 
 const toPending = (f: FormState): PendingSignup => ({
@@ -153,6 +192,9 @@ const toPending = (f: FormState): PendingSignup => ({
   employees: f.employees,
   industry: f.industry,
   state: f.state,
+  rfc: f.rfc.trim().toUpperCase(),
+  phone: f.phone.trim(),
+  origin: f.origin ?? readOrigin(),
   marketing_opt_out: f.marketing_opt_out,
   accept_terms: true,
   terms_version: LEGAL_VERSIONS.terminos,
@@ -160,6 +202,8 @@ const toPending = (f: FormState): PendingSignup => ({
 });
 
 /** Registro por autoservicio en Korporia Starter (sin sesión): datos → código por correo → empresa creada. */
+readOrigin();
+
 export function Signup() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [email, setEmail] = useState('');

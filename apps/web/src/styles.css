@@ -756,3 +756,16 @@ tr:last-child td { border-bottom: 0; }
   .topbar .module-nav { order: 10; flex-basis: 100%; }
   .topbar .module-nav button { flex: 1; }
 }
+
+/* Enlaces legales al pie (PLT-04) */
+.legal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  justify-content: center;
+  padding: 24px 16px 32px;
+  font-size: 0.85rem;
+}
+.legal-footer a {
+  color: var(--muted, #5b6478);
+}

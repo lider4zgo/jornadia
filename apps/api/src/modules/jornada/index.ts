@@ -22,7 +22,7 @@ export const jornadaModule: ApiModule = {
   /** Ajustes del módulo y, si el usuario es colaborador, su última checada y su referencia facial. */
   async me({ env, companyId, employee }) {
     const db = jornadaDb(adminClient(env));
-    const settingsQuery = db.from('settings').select('weekly_hour_limit, face_match_threshold, track_breaks').eq('company_id', companyId).maybeSingle();
+    const settingsQuery = db.from('settings').select('weekly_hour_limit, weekly_limits, face_match_threshold, track_breaks').eq('company_id', companyId).maybeSingle();
     if (!employee) {
       const { data: settings } = await settingsQuery;
       return { settings, lastPunch: null, nextKinds: [], face: null, consentConfirmedAt: null };

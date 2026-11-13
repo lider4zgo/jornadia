@@ -1,8 +1,8 @@
-import type { PunchKind } from '@korporia/jornada';
+import { weeklyLimitFor, type PunchKind } from '@korporia/jornada';
 
 /** Lo que /api/core/me trae del módulo Jornada (bajo la llave `jornada`). */
 export interface JornadaMe {
-  settings: { weekly_hour_limit: number; face_match_threshold: number; track_breaks: boolean } | null;
+  settings: { weekly_hour_limit: number | null; weekly_limits: Record<string, number>; face_match_threshold: number; track_breaks: boolean } | null;
   lastPunch: { id: string; kind: PunchKind; server_ts: string; site_id: string | null } | null;
   nextKinds: PunchKind[];
   face: { descriptor: number[]; model_version: string; enrolled_at: string; approved_at: string | null } | null;
@@ -55,7 +55,7 @@ export function punchTime(p: Pick<PunchRow, 'server_ts' | 'device_ts' | 'capture
   return p.server_ts;
 }
 
-/** Tope semanal configurado (LFT: 46 h en 2027). */
-export function weeklyLimit(j: JornadaMe | undefined): number {
-  return Number(j?.settings?.weekly_hour_limit ?? 46);
+/** Tope semanal que aplica en el año (el de la empresa o el de la ley: 46 h en 2027). */
+export function weeklyLimit(j: JornadaMe | undefined, year = new Date().getFullYear()): number {
+  return weeklyLimitFor(year, j?.settings);
 }

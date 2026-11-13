@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { PLAN_LABELS } from '@korporia/core';
+import { isValidCompanyRfc, PLAN_LABELS, TAX_REGIMES } from '@korporia/core';
+import { Calendario } from './Calendario';
 import { api, ApiError } from '../../lib/api';
 import { can, writable } from '../../lib/access';
 import { formatDate } from '../../lib/clock';
@@ -7,6 +8,8 @@ import type { Me } from '../../types';
 
 interface Profile {
   legal_name: string | null;
+  tax_id: string | null;
+  tax_regime: string | null;
   address: string | null;
   privacy_email: string | null;
   privacy_phone: string | null;
@@ -20,6 +23,13 @@ export function Empresa({ me }: { me: Me }) {
   const [f, setF] = useState<Profile | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [activeCount, setActiveCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    api<{ activeEmployees: number }>(`/api/core/companies/${company.id}/active-employees`)
+      .then((r) => setActiveCount(r.activeEmployees))
+      .catch(() => setActiveCount(null));
+  }, [company.id]);
 
   useEffect(() => {
     api<{ company: Profile }>(`/api/core/companies/${company.id}/profile`)
@@ -52,6 +62,11 @@ export function Empresa({ me }: { me: Me }) {
             <strong>{PLAN_LABELS[sub.plan] ?? sub.plan}</strong> · hasta {sub.employee_limit} colaboradores
             {sub.admin_limit ? ` · ${sub.admin_limit} administrador${sub.admin_limit === 1 ? '' : 'es'}` : ''}
           </p>
+          {activeCount != null && (
+            <p className="muted" style={{ margin: '6px 0 0' }}>
+              Empleados activos este mes (el máximo del periodo): <strong>{activeCount}</strong>
+            </p>
+          )}
           {sub.plan === 'starter' && sub.starter_clock_until && (
             <p className="muted" style={{ margin: '6px 0 0' }}>
               Checador hasta el {formatDate(sub.starter_clock_until, company.timezone)}
@@ -62,10 +77,10 @@ export function Empresa({ me }: { me: Me }) {
         </section>
       )}
       <form className="sheet stack" onSubmit={save}>
-        <h2>Datos para el aviso de privacidad de tus trabajadores</h2>
+        <h2>Datos del patrón</h2>
         <p className="muted" style={{ margin: 0 }}>
-          Tu empresa es la responsable de los datos de sus trabajadores y Korporia su encargado. Estos datos aparecen en el aviso que cada
-          trabajador firma en su app.
+          Tu empresa es la responsable de los datos de sus trabajadores y Korporia su encargado. La razón social, el domicilio y el contacto
+          aparecen en el aviso que cada trabajador firma en su app.
         </p>
         {missing && <div className="notice warn">Completa el domicilio y un correo o teléfono para temas de privacidad.</div>}
         {f && (
@@ -75,7 +90,28 @@ export function Empresa({ me }: { me: Me }) {
               <input value={f.legal_name ?? ''} onChange={(e) => setF({ ...f, legal_name: e.target.value })} placeholder={company.name} />
             </label>
             <label className="field">
-              Domicilio
+              RFC
+              <input
+                value={f.tax_id ?? ''}
+                onChange={(e) => setF({ ...f, tax_id: e.target.value.toUpperCase().replace(/\s/g, '') })}
+                maxLength={13}
+                autoCapitalize="characters"
+              />
+              {f.tax_id && f.tax_id.length >= 12 && !isValidCompanyRfc(f.tax_id) && <span className="muted">Revisa el RFC.</span>}
+            </label>
+            <label className="field">
+              Régimen fiscal
+              <select value={f.tax_regime ?? ''} onChange={(e) => setF({ ...f, tax_regime: e.target.value || null })}>
+                <option value="">Elige uno</option>
+                {Object.entries(TAX_REGIMES).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {k} · {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              Domicilio fiscal
               <input value={f.address ?? ''} onChange={(e) => setF({ ...f, address: e.target.value })} />
             </label>
             <label className="field">
@@ -95,6 +131,7 @@ export function Empresa({ me }: { me: Me }) {
           </button>
         )}
       </form>
+      <Calendario me={me} />
     </div>
   );
 }

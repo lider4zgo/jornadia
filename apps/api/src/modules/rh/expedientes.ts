@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { CONTRACT_TYPES, isValidCurp, isValidNss, isValidRfc, ONBOARDING_DOCUMENTS } from '@korporia/core';
+import { CONTRACT_TYPES, isValidCurp, isValidNss, isValidRfc, ONBOARDING_DOCUMENTS, SAT_CONTRACT_REGIMES } from '@korporia/core';
 import type { AppEnv } from '../../env';
 import { requirePermission, resolveCompany } from '../../lib/auth';
 import { DOCUMENT_COLUMNS, documentQuota, documentResponse, storeDocument } from '../../lib/documents';
@@ -141,6 +141,11 @@ expedientes.patch('/employees/:id', async (c) => {
     const v = str(b.contract_type, 20);
     if (v && !(v in CONTRACT_TYPES)) throw new HTTPException(400, { message: 'Tipo de contrato inválido.' });
     p.contract_type = v || null;
+  }
+  if ('sat_regime' in b) {
+    const v = str(b.sat_regime, 2);
+    if (v && !(v in SAT_CONTRACT_REGIMES)) throw new HTTPException(400, { message: 'Régimen de contratación inválido.' });
+    p.sat_regime = v || null;
   }
   if ('contract_start' in b) p.contract_start = dateOrNull(b.contract_start, 'inicio de contrato');
   if ('contract_end' in b) p.contract_end = dateOrNull(b.contract_end, 'fin de contrato');

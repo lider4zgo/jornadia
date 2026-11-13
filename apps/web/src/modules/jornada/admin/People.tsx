@@ -1,3 +1,4 @@
+import { WeeklyLimits } from './WeeklyLimits';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
@@ -121,6 +122,7 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
         </span>
       </label>
       )}
+      {canConfigure && <WeeklyLimits me={me} onChanged={onChanged} />}
 
       {error && <div className="notice error">{error}</div>}
       {creds && <CredentialCard creds={creds} onClose={() => setCreds(null)} />}

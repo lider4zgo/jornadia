@@ -1,3 +1,4 @@
+import { companyDaysBetween } from './calendar';
 import { HTTPException } from 'hono/http-exception';
 import { leaveDays, vacationBalance, type LeaveKind } from '@korporia/core';
 import type { Env } from '../../env';
@@ -12,7 +13,7 @@ export function todayIn(timezone: string): string {
 
 export const EMPLOYEE_COLUMNS = 'id, company_id, user_id, employee_number, full_name, phone, email, national_id, tax_id, position, default_site_id, active, hired_at, terminated_at';
 export const PROFILE_COLUMNS =
-  'employee_id, department_id, position_id, manager_id, contract_type, contract_start, contract_end, probation_end, daily_salary, birth_date, nss, address, emergency_name, emergency_phone, beneficiaries, rest_days, vacation_days_taken_before, updated_at';
+  'employee_id, department_id, position_id, manager_id, contract_type, sat_regime, contract_start, contract_end, probation_end, daily_salary, birth_date, nss, address, emergency_name, emergency_phone, beneficiaries, rest_days, vacation_days_taken_before, updated_at';
 export const LEAVE_COLUMNS =
   'id, employee_id, kind, start_date, end_date, days, reason, status, imss_folio, incapacity_type, document_id, by_employee, decided_at, decision_note, created_at';
 
@@ -67,7 +68,8 @@ export async function prepareLeave(
   if (!DATE_RE.test(input.start) || !DATE_RE.test(input.end) || input.end < input.start) {
     throw new HTTPException(400, { message: 'Revisa las fechas.' });
   }
-  const days = leaveDays(input.kind, input.start, input.end, opts.restDays);
+  const companyDays = await companyDaysBetween(adminClient(env), employee.company_id, input.start, input.end);
+  const days = leaveDays(input.kind, input.start, input.end, opts.restDays, companyDays);
   if (days <= 0) throw new HTTPException(400, { message: 'En esas fechas no hay días laborables.' });
 
   // No se empalma con otra ausencia vigente del mismo colaborador

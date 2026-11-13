@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { MODULES } from '@korporia/core';
+import { isValidCompanyRfc, MODULES, TAX_REGIMES } from '@korporia/core';
 import type { AppEnv } from '../env';
 import { invalidateAccess, requireAuth, requirePermission } from '../lib/auth';
 import { adminClient, audit, coreDb } from '../lib/supabase';
 import { EMAIL_RE, str } from '../lib/input';
+import { RFC_TAKEN, rfcInUse } from '../lib/rfc';
 
 export const companies = new Hono<AppEnv>();
 companies.use('*', requireAuth);
@@ -140,13 +141,13 @@ companies.patch('/:id/plan', async (c) => {
 
 /**
  * Datos de la empresa que se usan en el aviso de privacidad de sus trabajadores.
- * GET /api/core/companies/:id/profile · PATCH { legal_name, address, privacy_email, privacy_phone }
+ * GET /api/core/companies/:id/profile · PATCH { legal_name, tax_id, tax_regime, address, privacy_email, privacy_phone }
  */
 companies.get('/:id/profile', async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
   requirePermission(auth, id, 'core.personal.ver', 'core.empresa.editar');
-  const { data } = await coreDb(adminClient(c.env)).from('companies').select('id, name, code, legal_name, address, privacy_email, privacy_phone').eq('id', id).single();
+  const { data } = await coreDb(adminClient(c.env)).from('companies').select('id, name, code, legal_name, tax_id, tax_regime, address, privacy_email, privacy_phone').eq('id', id).single();
   return c.json({ company: data });
 });
 
@@ -157,6 +158,17 @@ companies.patch('/:id/profile', async (c) => {
   const b = await c.req.json<Record<string, unknown>>();
   const patch: Record<string, unknown> = {};
   if ('legal_name' in b) patch.legal_name = str(b.legal_name, 160) || null;
+  if ('tax_id' in b) {
+    const rfc = str(b.tax_id, 13).toUpperCase();
+    if (rfc && !isValidCompanyRfc(rfc)) throw new HTTPException(400, { message: 'Revisa el RFC: 12 caracteres para persona moral o 13 para persona física.' });
+    if (rfc && !auth.isPlatformAdmin && (await rfcInUse(c.env, rfc, id))) throw new HTTPException(409, { message: RFC_TAKEN });
+    patch.tax_id = rfc || null;
+  }
+  if ('tax_regime' in b) {
+    const v = str(b.tax_regime, 3);
+    if (v && !(v in TAX_REGIMES)) throw new HTTPException(400, { message: 'Régimen fiscal inválido.' });
+    patch.tax_regime = v || null;
+  }
   if ('address' in b) patch.address = str(b.address, 300) || null;
   if ('privacy_email' in b) {
     const e = str(b.privacy_email, 254).toLowerCase();
@@ -169,9 +181,29 @@ companies.patch('/:id/profile', async (c) => {
     .from('companies')
     .update(patch)
     .eq('id', id)
-    .select('id, name, code, legal_name, address, privacy_email, privacy_phone')
+    .select('id, name, code, legal_name, tax_id, tax_regime, address, privacy_email, privacy_phone')
     .single();
   if (error) throw new HTTPException(500, { message: 'No se pudieron guardar los datos.' });
   await audit(c.env, { company_id: id, actor_id: auth.userId, action: 'company.profile_updated', entity: 'core.companies', entity_id: id, details: patch });
   return c.json({ company: data });
+});
+
+/**
+ * T-12: empleados activos en un periodo (el máximo de las fotos diarias), base del límite
+ * de Starter y del cobro por rango.
+ * GET /api/core/companies/:id/active-employees?from=2027-01-01&to=2027-01-31 (por omisión, el mes en curso)
+ */
+companies.get('/:id/active-employees', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  requirePermission(auth, id, 'core.personal.ver', 'core.empresa.editar', 'core.empresa.suscripcion');
+  const today = new Date().toISOString().slice(0, 10);
+  const from = c.req.query('from') ?? `${today.slice(0, 7)}-01`;
+  const to = c.req.query('to') ?? today;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
+    throw new HTTPException(400, { message: 'Indica un periodo válido.' });
+  }
+  const { data, error } = await coreDb(adminClient(c.env)).rpc('active_employees_in_period', { p_company: id, p_from: from, p_to: to });
+  if (error) throw new HTTPException(500, { message: 'No se pudo contar el personal.' });
+  return c.json({ from, to, activeEmployees: Number(data ?? 0) });
 });

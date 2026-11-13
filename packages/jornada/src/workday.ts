@@ -113,7 +113,19 @@ export interface WeekSummary {
 }
 
 /** Resumen semanal (lunes a domingo) con horas extra respecto al tope de la LFT. */
-export function summarizeWeeks(shifts: Shift[], options: { limitHours?: number } = {}): WeekSummary[] {
+/**
+ * Tope semanal que aplica en un año: el que la empresa fijó para ese año (JOR-16),
+ * si no, su tope fijo anterior, y si no, el de la ley.
+ */
+export function weeklyLimitFor(year: number, settings?: { weekly_limits?: Record<string, number> | null; weekly_hour_limit?: number | null } | null): number {
+  const own = Number(settings?.weekly_limits?.[String(year)]);
+  if (Number.isFinite(own) && own > 0) return own;
+  const fixed = Number(settings?.weekly_hour_limit);
+  if (settings?.weekly_hour_limit != null && Number.isFinite(fixed) && fixed > 0) return fixed;
+  return weeklyHourLimitForYear(year);
+}
+
+export function summarizeWeeks(shifts: Shift[], options: { limitHours?: number; limitForYear?: (year: number) => number } = {}): WeekSummary[] {
   const byWeek = new Map<string, Shift[]>();
   for (const s of shifts) {
     const w = weekStart(s.date);
@@ -125,7 +137,8 @@ export function summarizeWeeks(shifts: Shift[], options: { limitHours?: number }
   return [...byWeek.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([week, list]) => {
-      const limitHours = options.limitHours ?? weeklyHourLimitForYear(Number(week.slice(0, 4)));
+      const year = Number(week.slice(0, 4));
+      const limitHours = options.limitHours ?? options.limitForYear?.(year) ?? weeklyHourLimitForYear(year);
       const limit = limitHours * 60;
       const worked = list.reduce((acc, s) => acc + s.workedMinutes, 0);
       const days = new Map<string, { workedMinutes: number; shifts: number }>();

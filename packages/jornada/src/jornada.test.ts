@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   allowedNextKinds,
+  weeklyLimitFor,
   buildShifts,
   distanceMeters,
   evaluateGeofence,
@@ -163,5 +164,15 @@ describe('jornada LFT', () => {
     expect(week!.overtimeMinutes).toBe(5 * 60);
     expect(week!.nearLimit).toBe(true);
     expect(week!.days).toHaveLength(6);
+  });
+});
+
+describe('topes de jornada por año (JOR-16)', () => {
+  it('usa el tope de la empresa para ese año y, si no, el de la ley', () => {
+    expect(weeklyLimitFor(2027, { weekly_limits: { '2027': 44 } })).toBe(44);
+    expect(weeklyLimitFor(2028, { weekly_limits: { '2027': 44 } })).toBe(44);
+    expect(weeklyLimitFor(2028, { weekly_limits: {}, weekly_hour_limit: null })).toBe(44);
+    expect(weeklyLimitFor(2030, null)).toBe(40);
+    expect(weeklyLimitFor(2029, { weekly_hour_limit: 45 })).toBe(45);
   });
 });

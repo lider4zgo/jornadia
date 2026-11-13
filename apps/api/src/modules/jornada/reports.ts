@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { buildShifts, localDate, summarizeWeeks, type PunchKind } from '@korporia/jornada';
+import { buildShifts, localDate, summarizeWeeks, weeklyLimitFor, type PunchKind } from '@korporia/jornada';
+import { mexicanHolidays } from '@korporia/core';
 import type { AppEnv } from '../../env';
 import { requireAuth, requirePermission, resolveCompany } from '../../lib/auth';
-import { adminClient, audit, coreDb, jornadaDb, userClient } from '../../lib/supabase';
+import { adminClient, audit, coreDb, jornadaDb, rhDb, userClient } from '../../lib/supabase';
 
 export const reports = new Hono<AppEnv>();
 reports.use('*', requireAuth);
@@ -35,12 +36,24 @@ reports.get('/jornada', async (c) => {
   const employeeFilter = c.req.query('employee_id');
 
   const admin = adminClient(c.env);
-  const [{ data: companyRow }, { data: settings }] = await Promise.all([
+  const [{ data: companyRow }, { data: settings }, { data: companyDays }, { data: profiles }] = await Promise.all([
     coreDb(admin).from('companies').select('name, timezone').eq('id', companyId).single(),
-    jornadaDb(admin).from('settings').select('weekly_hour_limit').eq('company_id', companyId).maybeSingle(),
+    jornadaDb(admin).from('settings').select('weekly_hour_limit, weekly_limits').eq('company_id', companyId).maybeSingle(),
+    rhDb(admin).from('company_days').select('day, name').eq('company_id', companyId).gte('day', from).lte('day', to),
+    rhDb(admin).from('employee_profiles').select('employee_id, rest_days').eq('company_id', companyId),
   ]);
   if (!companyRow) throw new HTTPException(404, { message: 'Empresa no encontrada.' });
-  const company = { ...companyRow, weekly_hour_limit: Number(settings?.weekly_hour_limit ?? 46) };
+  const limitForYear = (year: number) => weeklyLimitFor(year, settings);
+  const company = { ...companyRow, weekly_hour_limit: limitForYear(Number(from.slice(0, 4))) };
+
+  // JOR-12: descanso semanal y días de descanso obligatorio (LFT arts. 69 y 74) más los de la empresa
+  const holidays = new Map<string, string>();
+  for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++) {
+    for (const h of mexicanHolidays(y)) holidays.set(h.date, h.name);
+  }
+  for (const d of companyDays ?? []) if (!holidays.has(d.day)) holidays.set(d.day, d.name);
+  const restDaysOf = new Map<string, number[]>((profiles ?? []).map((p) => [p.employee_id, p.rest_days ?? [7]]));
+  const isoWeekday = (date: string) => ((new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7) + 1;
 
   // Margen de un día a cada lado para cubrir zona horaria y turnos nocturnos; luego se filtra por fecha local
   const user = userClient(c.env, auth.accessToken);
@@ -72,7 +85,8 @@ reports.get('/jornada', async (c) => {
     .map((e) => {
       const punches = byEmployee.get(e.id) ?? [];
       const shifts = buildShifts(punches, tz).filter((s) => s.date >= from && s.date <= to);
-      const weeks = summarizeWeeks(shifts, { limitHours: Number(company.weekly_hour_limit) });
+      const weeks = summarizeWeeks(shifts, { limitForYear });
+      const restDays = restDaysOf.get(e.id) ?? [7];
       const inRange = punches.filter((p) => {
         const d = localDate(p.ts, tz);
         return d >= from && d <= to;
@@ -86,6 +100,8 @@ reports.get('/jornada', async (c) => {
           breakMinutes: s.breakMinutes,
           workedMinutes: s.workedMinutes,
           incomplete: s.incomplete,
+          restDay: restDays.includes(isoWeekday(s.date)),
+          holiday: holidays.get(s.date) ?? null,
         })),
         weeks,
         totals: {
@@ -94,6 +110,8 @@ reports.get('/jornada', async (c) => {
           incompleteShifts: weeks.reduce((a, w) => a + w.incompleteShifts, 0),
           correctedPunches: inRange.filter((p) => p.source !== 'original').length,
           flaggedPunches: inRange.filter((p) => (p.flags ?? []).length > 0).length,
+          restDaysWorked: new Set(shifts.filter((s) => restDays.includes(isoWeekday(s.date))).map((s) => s.date)).size,
+          holidaysWorked: new Set(shifts.filter((s) => holidays.has(s.date)).map((s) => s.date)).size,
         },
       };
     });
@@ -132,7 +150,9 @@ reports.get('/jornada', async (c) => {
             fmtTime(s.end),
             s.breakMinutes,
             (s.workedMinutes / 60).toFixed(2),
-            s.incomplete ? 'Sin salida registrada' : '',
+            [s.incomplete ? 'Sin salida registrada' : '', s.restDay ? 'Descanso semanal trabajado' : '', s.holiday ? `Día de descanso obligatorio trabajado (${s.holiday})` : '']
+              .filter(Boolean)
+              .join('; '),
           ]
             .map(esc)
             .join(','),

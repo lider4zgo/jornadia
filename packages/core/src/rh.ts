@@ -121,9 +121,10 @@ export function calendarDays(start: string, end: string): number {
  * Días laborables de una ausencia: excluye los días de descanso semanal del
  * colaborador y los descansos obligatorios. Es lo que descuentan las vacaciones.
  */
-export function workingDays(start: string, end: string, restDays: number[] = [7]): number {
+export function workingDays(start: string, end: string, restDays: number[] = [7], companyDays: string[] = []): number {
   if (end < start) return 0;
-  const holidays = new Set<string>();
+  // Festivos oficiales (LFT art. 74) más los días de descanso propios de la empresa (ORG-05)
+  const holidays = new Set<string>(companyDays);
   for (let y = Number(start.slice(0, 4)); y <= Number(end.slice(0, 4)); y++) {
     for (const h of mexicanHolidays(y)) holidays.add(h.date);
   }
@@ -163,8 +164,8 @@ export const LEAVE_STATUS = {
 } as const;
 
 /** Días que cuenta una ausencia según su tipo. */
-export function leaveDays(kind: LeaveKind, start: string, end: string, restDays: number[] = [7]): number {
-  return LEAVE_KINDS[kind].countsWorkingDays ? workingDays(start, end, restDays) : calendarDays(start, end);
+export function leaveDays(kind: LeaveKind, start: string, end: string, restDays: number[] = [7], companyDays: string[] = []): number {
+  return LEAVE_KINDS[kind].countsWorkingDays ? workingDays(start, end, restDays, companyDays) : calendarDays(start, end);
 }
 
 export const DOCUMENT_KINDS = {
@@ -217,6 +218,48 @@ export function isValidCurp(value: string): boolean {
 }
 
 /** RFC de persona física (13 caracteres). */
+/** RFC de persona moral (3 letras) o física (4 letras), con fecha y homoclave. */
+export function isValidCompanyRfc(value: string): boolean {
+  return /^[A-ZÑ&]{3,4}\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[A-Z\d]{3}$/.test(value.trim().toUpperCase());
+}
+
+/** Régimen fiscal del patrón (catálogo c_RegimenFiscal del SAT, los más comunes en PyMEs). */
+export const TAX_REGIMES: Record<string, string> = {
+  '601': 'General de Ley Personas Morales',
+  '603': 'Personas Morales con Fines no Lucrativos',
+  '612': 'Personas Físicas con Actividades Empresariales y Profesionales',
+  '620': 'Sociedades Cooperativas de Producción',
+  '621': 'Incorporación Fiscal',
+  '622': 'Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras',
+  '623': 'Opcional para Grupos de Sociedades',
+  '624': 'Coordinados',
+  '625': 'Actividades Empresariales con ingresos a través de Plataformas Tecnológicas',
+  '626': 'Régimen Simplificado de Confianza',
+};
+
+/** Régimen de contratación del trabajador (catálogo c_TipoRegimen del SAT). */
+export const SAT_CONTRACT_REGIMES: Record<string, string> = {
+  '02': 'Sueldos (incluye ingresos señalados en la fracción I del art. 94 de LISR)',
+  '03': 'Jubilados',
+  '04': 'Pensionados',
+  '05': 'Asimilados a salarios: miembros de sociedades cooperativas de producción',
+  '06': 'Asimilados a salarios: integrantes de sociedades y asociaciones civiles',
+  '07': 'Asimilados a salarios: miembros de consejos',
+  '08': 'Asimilados a salarios: comisionistas',
+  '09': 'Asimilados a salarios: honorarios',
+  '10': 'Asimilados a salarios: acciones',
+  '11': 'Asimilados a salarios: otros',
+  '12': 'Jubilados o pensionados',
+  '13': 'Indemnización o separación',
+  '99': 'Otro régimen',
+};
+
+/** Código de origen de un registro (?origen= del sitio, una guía o el enlace de un despacho). */
+export function normalizeOrigin(value: unknown): string | null {
+  const v = String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40);
+  return v.length >= 2 ? v : null;
+}
+
 export function isValidRfc(value: string): boolean {
   return /^[A-ZÑ&]{4}\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[A-Z\d]{3}$/.test(value.trim().toUpperCase());
 }

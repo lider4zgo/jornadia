@@ -8,6 +8,7 @@ import { me } from './core/me';
 import { members } from './core/members';
 import { my } from './core/my';
 import { signup, waitlist } from './core/signup';
+import { referrals } from './core/referrals';
 import { activation, workerAccess } from './core/worker-access';
 import { runDailyJobs } from './lib/daily';
 import { serveStatic } from './lib/static';
@@ -49,6 +50,7 @@ app.route('/api/core/my', my);
 app.route('/api/core/worker-access', workerAccess);
 app.route('/api/core/signup', signup);
 app.route('/api/core/waitlist', waitlist);
+app.route('/api/core/referrals', referrals);
 
 // Módulos: cada uno en /api/<módulo>
 for (const module of MODULE_REGISTRY) app.route(`/api/${module.key}`, module.routes);

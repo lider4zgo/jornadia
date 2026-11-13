@@ -8,7 +8,7 @@ import { weeklyLimit } from '../types';
 interface ReportRow {
   employee: { id: string; employee_number: string; full_name: string; position: string | null };
   weeks: { weekStart: string; workedMinutes: number; overtimeMinutes: number; nearLimit: boolean; limitHours: number }[];
-  totals: { workedMinutes: number; overtimeMinutes: number; incompleteShifts: number; correctedPunches: number; flaggedPunches: number };
+  totals: { workedMinutes: number; overtimeMinutes: number; incompleteShifts: number; correctedPunches: number; flaggedPunches: number; restDaysWorked: number; holidaysWorked: number };
 }
 
 const addDays = (iso: string, n: number) => {
@@ -60,7 +60,7 @@ export function Report({ me }: { me: Me }) {
     }
   }
 
-  const limit = weeklyLimit(me.jornada);
+  const limit = weeklyLimit(me.jornada, Number(from.slice(0, 4)));
 
   return (
     <div className="content">
@@ -79,8 +79,8 @@ export function Report({ me }: { me: Me }) {
         </button>
       </div>
       <p className="muted">
-        Tope semanal configurado: {limit} h. Las checadas sin salida no suman horas hasta corregirse. El archivo incluye entradas,
-        salidas, comidas y horas extra por semana.
+        Tope semanal de {from.slice(0, 4)}: {limit} h. Las checadas sin salida no suman horas hasta corregirse. El archivo incluye entradas,
+        salidas, comidas, horas extra por semana y los descansos y festivos trabajados.
       </p>
 
       {error && <div className="notice error">{error}</div>}
@@ -97,6 +97,8 @@ export function Report({ me }: { me: Me }) {
                 <th>Trabajador</th>
                 <th className="num">Trabajado</th>
                 <th className="num">Horas extra</th>
+                <th className="num">Descansos trabajados</th>
+                <th className="num">Festivos trabajados</th>
                 <th className="num">Sin salida</th>
                 <th className="num">Corregidas</th>
                 <th className="num">Por revisar</th>
@@ -113,6 +115,8 @@ export function Report({ me }: { me: Me }) {
                   <td className="num" style={{ color: r.totals.overtimeMinutes ? 'var(--stop)' : undefined }}>
                     {r.totals.overtimeMinutes ? formatMinutes(r.totals.overtimeMinutes) : '—'}
                   </td>
+                  <td className="num">{r.totals.restDaysWorked || '—'}</td>
+                  <td className="num">{r.totals.holidaysWorked || '—'}</td>
                   <td className="num">{r.totals.incompleteShifts || '—'}</td>
                   <td className="num">{r.totals.correctedPunches || '—'}</td>
                   <td className="num">{r.totals.flaggedPunches || '—'}</td>

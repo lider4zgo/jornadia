@@ -6,7 +6,7 @@ import { syncClock } from './lib/clock';
 import { navigate, splitPath, usePath } from './lib/router';
 import { applyUpdate, useUpdateAvailable } from './lib/update';
 import { isConfigured, openedFromRecoveryLink, supabase } from './lib/supabase';
-import { Mark, Spinner, WhatsAppLink } from './common';
+import { LegalFooter, Mark, Spinner, SUPPORT_EMAIL, WhatsAppLink } from './common';
 import { Login } from './core/Login';
 import { SetPassword } from './core/SetPassword';
 import { CreateCompany } from './core/CreateCompany';
@@ -14,6 +14,7 @@ import { CompleteSignup, Signup } from './core/Signup';
 import { WorkerDocs } from './core/WorkerDocs';
 import { PlanBanner } from './core/PlanBanner';
 import { PlatformCompanies } from './core/PlatformCompanies';
+import { PlatformReferrals } from './core/PlatformReferrals';
 import { WEB_MODULES } from './modules';
 import { listQueue } from './modules/jornada/lib/queue';
 import type { Me } from './types';
@@ -165,7 +166,14 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
             ))}
           </nav>
         )}
-        <WhatsAppLink number={me.company?.whatsapp_support} text={`Hola, necesito ayuda con Korporia (${me.company?.name ?? ''}).`} />
+        {/* T-09: Korporia Starter no tiene soporte por WhatsApp; su ayuda es por correo y el centro de ayuda */}
+        {me.company?.subscription?.plan === 'starter' ? (
+          <a className="btn quiet" href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`Ayuda con Korporia (${me.company.name})`)}`}>
+            Ayuda
+          </a>
+        ) : (
+          <WhatsAppLink number={me.company?.whatsapp_support} text={`Hola, necesito ayuda con Korporia (${me.company?.name ?? ''}).`} />
+        )}
         <button className="btn quiet" onClick={() => void signOut()}>
           Salir
         </button>
@@ -173,6 +181,7 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
       <UpdateBanner />
       <PlanBanner me={me} />
       <Body me={me} current={current?.key} section={current?.key === moduleKey ? section : ''} reload={reload} />
+      <LegalFooter />
     </div>
   );
 }
@@ -184,6 +193,7 @@ function Body({ me, current, section, reload }: { me: Me; current?: string; sect
         <CreateCompany onCreated={() => void reload()} />
         <div className="content">
           <PlatformCompanies />
+          <PlatformReferrals />
         </div>
       </>
     );

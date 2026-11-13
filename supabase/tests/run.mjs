@@ -154,8 +154,9 @@ await test('carga datos de prueba', async () => {
 });
 
 await test('al contratar Jornada se crean sus ajustes', async () => {
-  const { rows } = await db.query(`select weekly_hour_limit, track_breaks from jornada.settings where company_id = $1`, [ids.companyA]);
-  assert(rows.length === 1 && Number(rows[0].weekly_hour_limit) === 46, 'faltan los ajustes de Jornada');
+  const { rows } = await db.query(`select weekly_hour_limit, weekly_limits, track_breaks from jornada.settings where company_id = $1`, [ids.companyA]);
+  // Sin tope propio: se usa el de la ley de cada año
+  assert(rows.length === 1 && rows[0].weekly_hour_limit === null, 'faltan los ajustes de Jornada');
   const none = await db.query(`select 1 from jornada.settings where company_id = $1`, [ids.companyB]);
   assert(none.rows.length === 0, 'una empresa sin Jornada no debe tener ajustes');
 });
@@ -564,6 +565,36 @@ await test('las tareas diarias archivan cuentas vencidas e inscriben a la lista 
   const again = await asService(`select core.run_daily_jobs('2026-11-06') as r`);
   assert(again.rows[0].r.waitlisted === 0, 'no se duplica');
   await expectError(asUser(ids.owner, `select core.run_daily_jobs('x')`));
+});
+
+await test('las tareas diarias guardan la foto de empleados activos y el máximo del periodo', async () => {
+  const { rows } = await asService(`select core.run_daily_jobs('2026-11-06') as r`);
+  assert(rows[0].r.counted >= 1, 'se guarda la foto del día');
+  const snap = await db.query(`select active_count from core.employee_counts where company_id = $1`, [ids.companyA]);
+  assert(snap.rows.length === 1, 'una foto por empresa y día');
+  await db.query(`insert into core.employee_counts (company_id, day, active_count) values ($1, '2026-10-15', 40)`, [ids.companyA]);
+  const max = await asService(`select core.active_employees_in_period($1, '2026-10-01', '2026-10-31') as n`, [ids.companyA]);
+  await expectError(asUser(ids.owner, `select core.active_employees_in_period($1, '2026-10-01', '2026-10-31')`, [ids.companyA]));
+  assert(max.rows[0].n === 40, 'el periodo toma el máximo de las fotos');
+  const other = await asUser(ids.owner, `select * from core.employee_counts where company_id = $1`, [ids.companyB]);
+  assert(other.rows.length === 0, 'no ve los conteos de otra empresa');
+});
+
+await test('los códigos de despacho y el calendario de la empresa no se escriben desde la app', async () => {
+  await expectError(asUser(ids.owner, `select * from core.referral_codes`));
+  await expectError(asUser(ids.owner, `insert into rh.company_days (company_id, day, name) values ($1, '2027-05-10', 'Día de las madres')`, [ids.companyA]));
+  await asService(`insert into rh.company_days (company_id, day, name) values ($1, '2027-05-10', 'Día de las madres')`, [ids.companyA]);
+  const own = await asUser(ids.owner, `select name from rh.company_days where company_id = $1`, [ids.companyA]);
+  const other = await asUser(ids.ownerB, `select name from rh.company_days where company_id = $1`, [ids.companyA]);
+  assert(own.rows.length === 1 && other.rows.length === 0, 'cada empresa ve solo su calendario');
+  await expectError(asService(`update core.companies set signup_origin = 'Con Espacios' where id = $1`, [ids.companyA]));
+});
+
+await test('los topes por año no aceptan otra cosa que un objeto', async () => {
+  await expectError(asService(`update jornada.settings set weekly_limits = '[]' where company_id = $1`, [ids.companyA]));
+  await asUser(ids.owner, `update jornada.settings set weekly_limits = '{"2027": 44}' where company_id = $1`, [ids.companyA]);
+  const { rows } = await db.query(`select weekly_limits, weekly_hour_limit from jornada.settings where company_id = $1`, [ids.companyA]);
+  assert(rows[0].weekly_limits['2027'] === 44 && rows[0].weekly_hour_limit === null, 'tope propio de 2027; sin tope fijo');
 });
 
 console.log(`\n${passed} pruebas correctas, ${failed} fallidas\n`);
