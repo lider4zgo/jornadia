@@ -6,9 +6,10 @@ import { syncClock } from './lib/clock';
 import { navigate, splitPath, usePath } from './lib/router';
 import { applyUpdate, useUpdateAvailable } from './lib/update';
 import { isConfigured, openedFromRecoveryLink, supabase } from './lib/supabase';
-import { LegalFooter, Mark, Spinner, SUPPORT_EMAIL, WhatsAppLink } from './common';
+import { LegalFooter, Mark, Modal, Spinner, SUPPORT_EMAIL, WhatsAppLink } from './common';
+import { CreatePassword, DeviceGate, EmailCodeStep } from './core/DeviceGate';
+import { saveDeviceToken, setStepUpHandler } from './lib/trust';
 import { Login } from './core/Login';
-import { SetPassword } from './core/SetPassword';
 import { CreateCompany } from './core/CreateCompany';
 import { CompleteSignup, Signup } from './core/Signup';
 import { WorkerDocs } from './core/WorkerDocs';
@@ -26,12 +27,11 @@ export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [me, setMe] = useState<Me | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [recovering, setRecovering] = useState(openedFromRecoveryLink);
+  const [needsDevice, setNeedsDevice] = useState(false);
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((event, s) => {
-      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       setSession(s);
     });
     return () => data.subscription.unsubscribe();
@@ -51,7 +51,13 @@ export function App() {
       localStorage.setItem(meCacheKey(userId), JSON.stringify(data));
       setMe(data);
       setLoadError(null);
+      setNeedsDevice(false);
     } catch (err) {
+      // Administrador en un dispositivo nuevo o sin contraseña: segundo paso por correo
+      if (err instanceof ApiError && err.code === 'device_verify') {
+        setNeedsDevice(true);
+        return;
+      }
       // Sin señal: se abre con los datos guardados de la última vez
       const cached = localStorage.getItem(meCacheKey(userId));
       if (err instanceof NetworkError && cached) {
@@ -87,8 +93,12 @@ export function App() {
     );
   }
   if (session === undefined) return <Spinner label="Abriendo Korporia…" />;
-  if (recovering && session) return <SetPassword onDone={() => setRecovering(false)} />;
   if (!session) return <SignedOut />;
+  if (needsDevice) {
+    // Limpia el enlace de recuperación de la barra de direcciones, si lo hubo
+    if (openedFromRecoveryLink) window.history.replaceState(null, '', window.location.pathname);
+    return <DeviceGate userId={session.user.id} onVerified={() => void loadMe()} onSignOut={() => void signOut()} />;
+  }
   if (loadError) {
     return (
       <div className="shell">
@@ -137,6 +147,17 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
   const path = usePath();
   const [moduleKey, section] = splitPath(path);
   const available = WEB_MODULES.filter((m) => canEnterModule(me, m.key));
+  const [changingPassword, setChangingPassword] = useState(false);
+  // Cambios sensibles: la API pide un código reciente y la app lo pide en una ventana
+  const [stepUp, setStepUp] = useState<((ok: boolean) => void) | null>(null);
+  useEffect(() => {
+    setStepUpHandler(() => new Promise<boolean>((resolve) => setStepUp(() => resolve)));
+    return () => setStepUpHandler(null);
+  }, []);
+  const finishStepUp = (ok: boolean) => {
+    stepUp?.(ok);
+    setStepUp(null);
+  };
   const current = available.find((m) => m.key === moduleKey) ?? available[0];
 
   // Ruta sin módulo o de un módulo no disponible: ir al primero que el usuario puede usar
@@ -181,7 +202,41 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
       <UpdateBanner />
       <PlanBanner me={me} />
       <Body me={me} current={current?.key} section={current?.key === moduleKey ? section : ''} reload={reload} />
+      {!me.worker && (
+        <div style={{ textAlign: 'center' }}>
+          <button className="btn quiet small" onClick={() => setChangingPassword(true)}>
+            Cambiar contraseña
+          </button>
+        </div>
+      )}
       <LegalFooter />
+      {changingPassword && (
+        <Modal title="Cambiar contraseña" onClose={() => setChangingPassword(false)}>
+          <CreatePassword
+            framed={false}
+            title="Cambiar contraseña"
+            intro="Te pediremos un código de tu correo para confirmar el cambio. Los demás dispositivos tendrán que volver a confirmar."
+            onSaved={(token) => {
+              saveDeviceToken(me.userId, token);
+              setChangingPassword(false);
+            }}
+            onCancel={() => setChangingPassword(false)}
+          />
+        </Modal>
+      )}
+      {stepUp && (
+        <Modal title="Confirma el cambio" onClose={() => finishStepUp(false)}>
+          <EmailCodeStep
+            framed={false}
+            email={email ?? ''}
+            purpose="sensitive"
+            title="Confirma el cambio"
+            intro="Para este cambio necesitamos confirmar que eres tú. Te enviamos un código a tu correo."
+            onVerified={() => finishStepUp(true)}
+            onCancel={() => finishStepUp(false)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

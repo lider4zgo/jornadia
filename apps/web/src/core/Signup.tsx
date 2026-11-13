@@ -256,7 +256,7 @@ export function Signup() {
             <label className="field">
               Correo
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
-              <small>Te enviaremos un código para entrar, sin contraseñas.</small>
+              <small>Te enviaremos un código para confirmar tu correo; después crearás tu contraseña.</small>
             </label>
             <CompanyFields value={form} onChange={(p) => setForm({ ...form, ...p })} />
             {error && (

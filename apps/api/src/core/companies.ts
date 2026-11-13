@@ -6,6 +6,7 @@ import { invalidateAccess, requireAuth, requirePermission } from '../lib/auth';
 import { adminClient, audit, coreDb } from '../lib/supabase';
 import { EMAIL_RE, str } from '../lib/input';
 import { RFC_TAKEN, rfcInUse } from '../lib/rfc';
+import { requireRecentCode } from './device';
 
 export const companies = new Hono<AppEnv>();
 companies.use('*', requireAuth);
@@ -156,6 +157,14 @@ companies.patch('/:id/profile', async (c) => {
   const id = c.req.param('id');
   requirePermission(auth, id, 'core.empresa.editar');
   const b = await c.req.json<Record<string, unknown>>();
+  // RFC y razón social son datos sensibles: si cambian, se pide un código reciente del correo
+  if ('legal_name' in b || 'tax_id' in b) {
+    const { data: cur } = await coreDb(adminClient(c.env)).from('companies').select('legal_name, tax_id').eq('id', id).single();
+    const changed =
+      ('legal_name' in b && (str(b.legal_name, 160) || null) !== (cur?.legal_name ?? null)) ||
+      ('tax_id' in b && (str(b.tax_id, 13).toUpperCase() || null) !== (cur?.tax_id ?? null));
+    if (changed && cur && (cur.legal_name || cur.tax_id)) await requireRecentCode(c);
+  }
   const patch: Record<string, unknown> = {};
   if ('legal_name' in b) patch.legal_name = str(b.legal_name, 160) || null;
   if ('tax_id' in b) {

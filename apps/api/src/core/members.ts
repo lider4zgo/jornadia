@@ -1,3 +1,4 @@
+import { requireRecentCode } from './device';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { canGrantRole, workerEmail } from '@korporia/core';
@@ -29,6 +30,8 @@ members.post('/', async (c) => {
   const roleKey = str(b.role, 32) || 'worker';
   const isWorker = roleKey === 'worker';
   requirePermission(auth, companyId, isWorker ? 'core.personal.gestionar' : 'core.usuarios.gestionar');
+  // Dar acceso de administración es un cambio sensible: pide un código reciente del correo
+  if (!isWorker) await requireRecentCode(c);
 
   const admin = adminClient(c.env);
   const core = coreDb(admin);

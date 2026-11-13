@@ -7,6 +7,8 @@ export interface Env {
   /** Llave secreta (sb_secret_…): privilegios de servicio, solo en el servidor */
   SUPABASE_SECRET_KEY: string;
   WORKER_EMAIL_DOMAIN: string;
+  /** Llave de Resend (re_…) para mandar los códigos del segundo paso */
+  RESEND_API_KEY?: string;
 }
 
 export type CompanyStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'archived';
@@ -28,6 +30,13 @@ export interface AuthContext {
   accessToken: string;
   access: CompanyAccess[];
   isPlatformAdmin: boolean;
+  /** session_id del token de Supabase */
+  sessionId: string | null;
+  /** Cuenta de trabajador (código de empresa + número + PIN): no lleva segundo paso */
+  isWorker: boolean;
+  /** Métodos con los que se inició la sesión (password, otp, recovery…) y cuándo */
+  amr: { method: string; timestamp: number }[];
+  email: string | null;
 }
 
 export type AppEnv = {

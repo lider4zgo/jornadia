@@ -1,8 +1,9 @@
 import type { MiddlewareHandler } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { createRemoteJWKSet, errors, jwtVerify } from 'jose';
+import { createRemoteJWKSet, decodeJwt, errors, jwtVerify, type JWTPayload } from 'jose';
 import { MODULES, moduleOf, READ_ONLY_OK } from '@korporia/core';
 import type { AppEnv, AuthContext, CompanyAccess, CompanyStatus, Env } from '../env';
+import { CodedError } from './errors';
 import { adminClient, coreDb } from './supabase';
 
 // ---------------------------------------------------------------------
@@ -21,21 +22,52 @@ function projectJwks(env: Env) {
 
 const SESSION_EXPIRED = 'Tu sesión expiró. Vuelve a iniciar sesión.';
 
-async function userIdFromToken(env: Env, token: string): Promise<string> {
+async function verifiedPayload(env: Env, token: string): Promise<JWTPayload> {
   try {
     const { payload } = await jwtVerify(token, projectJwks(env), {
       issuer: `${env.SUPABASE_URL}/auth/v1`,
       audience: 'authenticated',
     });
-    if (typeof payload.sub === 'string' && payload.sub) return payload.sub;
+    if (typeof payload.sub === 'string' && payload.sub) return payload;
   } catch (err) {
     if (err instanceof errors.JWTExpired) throw new HTTPException(401, { message: SESSION_EXPIRED });
     // Llave antigua, llave rotada o JWKS no disponible: se valida con Supabase Auth
   }
   const { data, error } = await adminClient(env).auth.getUser(token);
   if (error || !data.user) throw new HTTPException(401, { message: SESSION_EXPIRED });
-  return data.user.id;
+  // Supabase ya validó el token: se leen sus datos (session_id, amr) sin volver a verificar la firma
+  return { ...decodeJwt(token), sub: data.user.id };
 }
+
+// ---------------------------------------------------------------------
+// Segundo paso por correo (administradores)
+// ---------------------------------------------------------------------
+const VERIFIED_TTL_MS = 30_000;
+const verifiedCache = new Map<string, { at: number; ok: boolean }>();
+
+export function forgetVerifiedSession(sessionId: string | null) {
+  if (sessionId) verifiedCache.delete(sessionId);
+}
+
+/** ¿La sesión ya pasó el segundo paso y sigue vigente? */
+export async function sessionVerified(env: Env, userId: string, sessionId: string | null): Promise<boolean> {
+  if (!sessionId) return false;
+  const hit = verifiedCache.get(sessionId);
+  if (hit && Date.now() - hit.at < VERIFIED_TTL_MS) return hit.ok;
+  const { data } = await coreDb(adminClient(env))
+    .from('verified_sessions')
+    .select('session_id')
+    .eq('session_id', sessionId)
+    .eq('user_id', userId)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+  const ok = Boolean(data);
+  if (verifiedCache.size >= MAX_CACHED_USERS) verifiedCache.delete(verifiedCache.keys().next().value!);
+  verifiedCache.set(sessionId, { at: Date.now(), ok });
+  return ok;
+}
+
+export const DEVICE_VERIFY = 'device_verify';
 
 // ---------------------------------------------------------------------
 // Accesos del usuario (con caché breve por instancia del Worker)
@@ -91,16 +123,34 @@ async function loadAccess(env: Env, userId: string) {
   return value;
 }
 
-/** Valida el token y carga los accesos del usuario. */
-export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
+/** Valida el token y lee la sesión, sin exigir el segundo paso (rutas del propio segundo paso). */
+export const requireSession: MiddlewareHandler<AppEnv> = async (c, next) => {
   const header = c.req.header('Authorization') ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
   if (!token) throw new HTTPException(401, { message: 'Inicia sesión para continuar.' });
 
-  const userId = await userIdFromToken(c.env, token);
-  const { access, isPlatformAdmin } = await loadAccess(c.env, userId);
-  const auth: AuthContext = { userId, accessToken: token, access, isPlatformAdmin };
+  const payload = await verifiedPayload(c.env, token);
+  const userId = payload.sub!;
+  const email = typeof payload.email === 'string' ? payload.email.toLowerCase() : null;
+  const isWorker = Boolean(email && email.endsWith(`.${c.env.WORKER_EMAIL_DOMAIN}`));
+  const amr = Array.isArray(payload.amr) ? (payload.amr as { method: string; timestamp: number }[]) : [];
+  const sessionId = typeof payload.session_id === 'string' ? payload.session_id : null;
+  const auth: AuthContext = { userId, accessToken: token, access: [], isPlatformAdmin: false, sessionId, isWorker, amr, email };
   c.set('auth', auth);
+  await next();
+};
+
+/** Valida el token, exige el segundo paso a los administradores y carga sus accesos. */
+export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
+  await requireSession(c, async () => {
+    const auth = c.get('auth');
+    if (!auth.isWorker && !(await sessionVerified(c.env, auth.userId, auth.sessionId))) {
+      throw new CodedError(403, 'Confirma que eres tú con el código que te enviamos a tu correo.', DEVICE_VERIFY);
+    }
+    const { access, isPlatformAdmin } = await loadAccess(c.env, auth.userId);
+    auth.access = access;
+    auth.isPlatformAdmin = isPlatformAdmin;
+  });
   await next();
 };
 

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
+import { CodedError } from './lib/errors';
 import { secureHeaders } from 'hono/secure-headers';
 import type { AppEnv } from './env';
 import { companies } from './core/companies';
@@ -9,6 +10,7 @@ import { members } from './core/members';
 import { my } from './core/my';
 import { signup, waitlist } from './core/signup';
 import { referrals } from './core/referrals';
+import { account, device } from './core/device';
 import { activation, workerAccess } from './core/worker-access';
 import { runDailyJobs } from './lib/daily';
 import { serveStatic } from './lib/static';
@@ -51,6 +53,8 @@ app.route('/api/core/worker-access', workerAccess);
 app.route('/api/core/signup', signup);
 app.route('/api/core/waitlist', waitlist);
 app.route('/api/core/referrals', referrals);
+app.route('/api/core/device', device);
+app.route('/api/core/account', account);
 
 // Módulos: cada uno en /api/<módulo>
 for (const module of MODULE_REGISTRY) app.route(`/api/${module.key}`, module.routes);
@@ -62,6 +66,7 @@ app.notFound((c) => {
 });
 
 app.onError((err, c) => {
+  if (err instanceof CodedError) return c.json({ error: err.message, code: err.code }, err.status);
   if (err instanceof HTTPException) return c.json({ error: err.message }, err.status);
   console.error(err);
   return c.json({ error: 'Ocurrió un error inesperado. Intenta de nuevo.' }, 500);

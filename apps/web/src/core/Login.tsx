@@ -34,25 +34,10 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [forgot, setForgot] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
-  // Administración: código por correo (sin contraseña) o, como respaldo, contraseña
-  const [staffMethod, setStaffMethod] = useState<'code' | 'password'>('code');
+  // Administración: correo y contraseña; el código por correo solo sirve para crear o recuperar la contraseña
+  const [staffMethod, setStaffMethod] = useState<'code' | 'password'>('password');
   const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
   const [noAccount, setNoAccount] = useState(false);
-
-  async function sendReset(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: window.location.origin,
-    });
-    setBusy(false);
-    if (err && !/rate|seconds/i.test(err.message)) setError('No se pudo enviar el correo. Revisa la dirección e intenta de nuevo.');
-    else if (err) setError('Ya enviamos un correo hace poco. Espera un minuto antes de pedir otro.');
-    else setResetSent(true);
-  }
 
   const switchMode = (m: 'worker' | 'staff') => {
     setMode(m);
@@ -219,44 +204,6 @@ export function Login() {
           </form>
         ) : mode === 'staff' && codeSentTo ? (
           <EmailCode email={codeSentTo} onBack={() => setCodeSentTo(null)} />
-        ) : mode === 'staff' && forgot ? (
-          <form className="stack" onSubmit={sendReset} noValidate>
-            <h2>Restablecer contraseña</h2>
-            {resetSent ? (
-              <div className="notice ok" role="status">
-                <strong>Revisa tu correo</strong>
-                Si {email} tiene una cuenta, te llegará un enlace para crear una contraseña nueva. Ábrelo en este mismo teléfono o
-                computadora. Revisa también la carpeta de spam.
-              </div>
-            ) : (
-              <>
-                <p className="muted">Escribe el correo de tu cuenta y te enviaremos un enlace para crear una contraseña nueva.</p>
-                <label className="field">
-                  Correo
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
-                </label>
-                {error && (
-                  <div className="notice error" role="alert">
-                    {error}
-                  </div>
-                )}
-                <button className="btn solid block" type="submit" disabled={busy || !email.includes('@')}>
-                  {busy ? 'Enviando…' : 'Enviarme el enlace'}
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              className="btn quiet block"
-              onClick={() => {
-                setForgot(false);
-                setResetSent(false);
-                setError(null);
-              }}
-            >
-              Volver a iniciar sesión
-            </button>
-          </form>
         ) : (
         <form className="stack" onSubmit={submit} noValidate>
           {mode === 'worker' ? (
@@ -290,7 +237,7 @@ export function Login() {
                 </label>
               ) : (
                 <p className="muted" style={{ margin: 0 }}>
-                  Te enviaremos un código a tu correo para entrar, sin contraseñas.
+                  Te enviaremos un código a tu correo. Después crearás una contraseña nueva.
                 </p>
               )}
             </>
@@ -334,20 +281,8 @@ export function Login() {
                   setError(null);
                 }}
               >
-                {staffMethod === 'code' ? 'Entrar con contraseña' : 'Entrar con código por correo'}
+                {staffMethod === 'code' ? 'Volver a entrar con contraseña' : '¿Olvidaste tu contraseña o aún no tienes una?'}
               </button>
-              {staffMethod === 'password' && (
-                <button
-                  type="button"
-                  className="btn quiet block"
-                  onClick={() => {
-                    setForgot(true);
-                    setError(null);
-                  }}
-                >
-                  ¿Olvidaste tu contraseña?
-                </button>
-              )}
               <button type="button" className="btn quiet block" onClick={() => navigate('/registro')}>
                 ¿Tu empresa aún no usa Korporia? Crea tu cuenta gratis
               </button>

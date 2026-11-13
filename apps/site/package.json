@@ -7,9 +7,10 @@
   "scripts": {
     "import": "node scripts/import-tablero.mjs",
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build && node scripts/build-blog.mjs"
   },
   "dependencies": {
+    "marked": "^14.1.4",
     "preact": "10.24.3"
   },
   "devDependencies": {

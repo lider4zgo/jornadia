@@ -1,3 +1,4 @@
+import { requestStepUp } from './trust';
 import { accessToken } from './supabase';
 
 export class ApiError extends Error {
@@ -28,6 +29,16 @@ interface Options {
 }
 
 export async function api<T = unknown>(path: string, opts: Options = {}): Promise<T> {
+  try {
+    return await request<T>(path, opts);
+  } catch (err) {
+    // Cambio sensible: se pide el código del correo y se reintenta una vez
+    if (err instanceof ApiError && err.code === 'step_up' && (await requestStepUp())) return request<T>(path, opts);
+    throw err;
+  }
+}
+
+async function request<T>(path: string, opts: Options): Promise<T> {
   const token = await accessToken();
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;

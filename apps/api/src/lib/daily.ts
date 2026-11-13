@@ -32,6 +32,11 @@ export async function runDailyJobs(env: Env): Promise<Record<string, unknown>> {
   if (error) console.error('run_daily_jobs failed', error);
   result.accounts = jobs;
 
+  // Segundo paso: códigos vencidos, sesiones y dispositivos de confianza vencidos
+  const { data: purgedAuth, error: authErr } = await core.rpc('purge_auth_records');
+  if (authErr) console.error('purge_auth_records failed', authErr);
+  result.auth = purgedAuth;
+
   const cutoff = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
   const [{ data: due }, { data: done }] = await Promise.all([
     core.from('employees').select('id, company_id').eq('active', false).lte('terminated_at', cutoff).limit(200),

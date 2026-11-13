@@ -24,8 +24,12 @@ const SUPABASE_STUB = `
     if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
     if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if;
   end $$;
+  create or replace function auth.jwt() returns jsonb language sql stable as $$
+    select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb
+  $$;
   grant usage on schema auth to anon, authenticated, service_role;
   grant execute on function auth.uid() to anon, authenticated, service_role;
+  grant execute on function auth.jwt() to anon, authenticated, service_role;
 `;
 
 let passed = 0;
@@ -56,10 +60,18 @@ async function expectError(promise, fragment) {
 }
 
 // Ejecuta como usuario autenticado (RLS activo)
-async function asUser(userId, sql, params = []) {
+// Por omisión, una sesión de administrador que ya pasó el segundo paso (session_id = id del usuario)
+async function asUser(userId, sql, params = [], { verified = true, email = null } = {}) {
+  if (verified) {
+    await db.query(
+      `insert into core.verified_sessions (session_id, user_id, expires_at) values ($1, $1, now() + interval '30 days') on conflict (session_id) do nothing`,
+      [userId],
+    );
+  }
   return db.transaction(async (tx) => {
     await tx.exec(`set local role authenticated`);
     await tx.query(`select set_config('request.jwt.claim.sub', $1, true)`, [userId]);
+    await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: userId, session_id: verified ? userId : '00000000-0000-4000-8000-000000000000', email })]);
     return tx.query(sql, params);
   });
 }
@@ -595,6 +607,29 @@ await test('los topes por año no aceptan otra cosa que un objeto', async () => 
   await asUser(ids.owner, `update jornada.settings set weekly_limits = '{"2027": 44}' where company_id = $1`, [ids.companyA]);
   const { rows } = await db.query(`select weekly_limits, weekly_hour_limit from jornada.settings where company_id = $1`, [ids.companyA]);
   assert(rows[0].weekly_limits['2027'] === 44 && rows[0].weekly_hour_limit === null, 'tope propio de 2027; sin tope fijo');
+});
+
+await test('sin el segundo paso, un administrador no ve datos de su empresa', async () => {
+  const unverified = await asUser(ids.owner, `select id from core.employees where company_id = $1`, [ids.companyA], { verified: false });
+  assert(unverified.rows.length === 0, 'una sesión sin verificar no ve el personal');
+  const can = await asUser(ids.owner, `select core.can($1, 'core.personal.ver') as ok`, [ids.companyA], { verified: false });
+  assert(can.rows[0].ok === false, 'core.can exige la sesión verificada');
+  const ok = await asUser(ids.owner, `select id from core.employees where company_id = $1`, [ids.companyA]);
+  assert(ok.rows.length > 0, 'con la sesión verificada sí lo ve');
+  await db.query(`update core.verified_sessions set expires_at = now() - interval '1 second' where session_id = $1`, [ids.owner]);
+  const expired = await asUser(ids.owner, `select core.session_ok() as ok`, [], { verified: false });
+  assert(expired.rows[0].ok === false, 'a los 30 días hay que volver a confirmar');
+  await db.query(`update core.verified_sessions set expires_at = now() + interval '30 days' where session_id = $1`, [ids.owner]);
+});
+
+await test('los trabajadores no llevan segundo paso y nadie lee los códigos desde la app', async () => {
+  const w = await asUser(ids.owner, `select core.session_ok() as ok`, [], { verified: false, email: '15@obra-norte.trabajadores.korporia.com' });
+  assert(w.rows[0].ok === true, 'la cuenta de trabajador entra con su PIN');
+  const fake = await asUser(ids.owner, `select core.session_ok() as ok`, [], { verified: false, email: 'yo@trabajadores.korporia.com.mx' });
+  assert(fake.rows[0].ok === false, 'otro dominio parecido no cuenta como trabajador');
+  await expectError(asUser(ids.owner, `select * from core.email_challenges`));
+  await expectError(asUser(ids.owner, `select * from core.trusted_devices`));
+  await expectError(asUser(ids.owner, `select * from core.verified_sessions`));
 });
 
 console.log(`\n${passed} pruebas correctas, ${failed} fallidas\n`);
