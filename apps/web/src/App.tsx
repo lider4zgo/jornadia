@@ -7,8 +7,9 @@ import { navigate, splitPath, usePath } from './lib/router';
 import { applyUpdate, useUpdateAvailable } from './lib/update';
 import { isConfigured, openedFromRecoveryLink, supabase } from './lib/supabase';
 import { LegalFooter, Mark, Modal, Spinner, SUPPORT_EMAIL, WhatsAppLink } from './common';
-import { CreatePassword, DeviceGate, EmailCodeStep } from './core/DeviceGate';
-import { saveDeviceToken, setStepUpHandler } from './lib/trust';
+import { DeviceGate, EmailCodeStep } from './core/DeviceGate';
+import { MyProfile } from './core/MyProfile';
+import { setStepUpHandler } from './lib/trust';
 import { Login } from './core/Login';
 import { CreateCompany } from './core/CreateCompany';
 import { CompleteSignup, Signup } from './core/Signup';
@@ -147,7 +148,7 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
   const path = usePath();
   const [moduleKey, section] = splitPath(path);
   const available = WEB_MODULES.filter((m) => canEnterModule(me, m.key));
-  const [changingPassword, setChangingPassword] = useState(false);
+  const onProfile = moduleKey === 'perfil' && !me.worker;
   // Cambios sensibles: la API pide un código reciente y la app lo pide en una ventana
   const [stepUp, setStepUp] = useState<((ok: boolean) => void) | null>(null);
   useEffect(() => {
@@ -162,8 +163,8 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
 
   // Ruta sin módulo o de un módulo no disponible: ir al primero que el usuario puede usar
   useEffect(() => {
-    if (current && current.key !== moduleKey) navigate(`/${current.key}`, { replace: true });
-  }, [current, moduleKey]);
+    if (!onProfile && current && current.key !== moduleKey) navigate(`/${current.key}`, { replace: true });
+  }, [current, moduleKey, onProfile]);
 
   // El colaborador (sin permisos de gestión) usa la vista angosta de celular
   const SELF_SERVICE = ['jornada.checar', 'jornada.registros.propios', 'rh.portal.ver', 'rh.portal.solicitar'];
@@ -174,10 +175,17 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
     <div className={`shell ${wide ? 'wide' : ''}`}>
       <header className="topbar">
         <Mark />
-        <div className="who">
-          <strong>{me.company?.name ?? 'Korporia'}</strong>
-          <span>{me.employee?.full_name ?? (me.isPlatformAdmin ? 'Administrador de la plataforma' : email)}</span>
-        </div>
+        {me.worker ? (
+          <div className="who">
+            <strong>{me.company?.name ?? 'Korporia'}</strong>
+            <span>{me.employee?.full_name ?? email}</span>
+          </div>
+        ) : (
+          <button className="who who-link" onClick={() => navigate('/perfil')} title="Mi perfil">
+            <strong>{me.company?.name ?? 'Korporia'}</strong>
+            <span>{me.employee?.full_name ?? (me.isPlatformAdmin && !me.company ? 'Administrador de la plataforma' : email)} · Mi perfil</span>
+          </button>
+        )}
         {available.length > 1 && (
           <nav className="module-nav" aria-label="Módulos">
             {available.map((m) => (
@@ -201,29 +209,12 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
       </header>
       <UpdateBanner />
       <PlanBanner me={me} />
-      <Body me={me} current={current?.key} section={current?.key === moduleKey ? section : ''} reload={reload} />
-      {!me.worker && (
-        <div style={{ textAlign: 'center' }}>
-          <button className="btn quiet small" onClick={() => setChangingPassword(true)}>
-            Cambiar contraseña
-          </button>
-        </div>
+      {onProfile ? (
+        <MyProfile me={me} onSaved={() => void reload()} />
+      ) : (
+        <Body me={me} current={current?.key} section={current?.key === moduleKey ? section : ''} reload={reload} />
       )}
       <LegalFooter />
-      {changingPassword && (
-        <Modal title="Cambiar contraseña" onClose={() => setChangingPassword(false)}>
-          <CreatePassword
-            framed={false}
-            title="Cambiar contraseña"
-            intro="Te pediremos un código de tu correo para confirmar el cambio. Los demás dispositivos tendrán que volver a confirmar."
-            onSaved={(token) => {
-              saveDeviceToken(me.userId, token);
-              setChangingPassword(false);
-            }}
-            onCancel={() => setChangingPassword(false)}
-          />
-        </Modal>
-      )}
       {stepUp && (
         <Modal title="Confirma el cambio" onClose={() => finishStepUp(false)}>
           <EmailCodeStep

@@ -769,3 +769,12 @@ tr:last-child td { border-bottom: 0; }
 .legal-footer a {
   color: var(--muted, #5b6478);
 }
+
+/* Google y Microsoft */
+.oauth-sep { display: flex; align-items: center; gap: 12px; color: var(--muted, #5b6478); font-size: 0.85rem; }
+.oauth-sep::before, .oauth-sep::after { content: ''; flex: 1; height: 1px; background: var(--line, #dde0ec); }
+.btn.oauth { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+
+/* Nombre en la barra superior: lleva a Mi perfil */
+.who-link { background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.who-link:hover span { text-decoration: underline; }

@@ -632,6 +632,18 @@ await test('los trabajadores no llevan segundo paso y nadie lee los códigos des
   await expectError(asUser(ids.owner, `select * from core.verified_sessions`));
 });
 
+await test('cada administrador ve solo su perfil y lo cambia por la API', async () => {
+  await asService(`insert into core.user_profiles (user_id, first_names, position_title) values ($1, 'Erik', 'Dueño(a) o director(a) general')`, [ids.owner]);
+  const own = await asUser(ids.owner, `select first_names from core.user_profiles`);
+  assert(own.rows.length === 1 && own.rows[0].first_names === 'Erik', 've su propio perfil');
+  const other = await asUser(ids.ownerB, `select first_names from core.user_profiles`);
+  assert(other.rows.length === 0, 'no ve perfiles ajenos');
+  const unverified = await asUser(ids.owner, `select first_names from core.user_profiles`, [], { verified: false });
+  assert(unverified.rows.length === 0, 'sin el segundo paso no lo ve');
+  await expectError(asUser(ids.owner, `update core.user_profiles set first_names = 'X'`));
+  await expectError(asService(`update core.companies set postal_code = '123' where id = $1`, [ids.companyA]));
+});
+
 console.log(`\n${passed} pruebas correctas, ${failed} fallidas\n`);
 await db.close();
 process.exit(failed ? 1 : 0);

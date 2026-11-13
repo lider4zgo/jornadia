@@ -1,33 +1,34 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { INDUSTRIES, isValidCompanyRfc, LEGAL_URLS, LEGAL_VERSIONS, MX_STATES, normalizeOrigin, STARTER } from '@korporia/core';
+import { isValidCompanyRfc, LEGAL_URLS, LEGAL_VERSIONS, normalizeOrigin, STARTER } from '@korporia/core';
 import { api, ApiError } from '../lib/api';
 import { navigate } from '../lib/router';
+import { supabase } from '../lib/supabase';
+import { passwordProblem } from '../lib/trust';
 import { Logo, Spinner, WhatsAppLink } from '../common';
 import type { Me } from '../types';
-import { EmailCode, sendCode } from './EmailCode';
+import { OAuthButtons } from './OAuthButtons';
 
-/** Datos del registro que esperan a que la persona confirme su correo con el código. */
-type PendingSignup = {
-  full_name: string;
-  company_name: string;
-  employees: number;
-  industry: string;
-  state: string;
-  rfc: string;
-  phone: string;
-  origin: string | null;
-  marketing_opt_out: boolean;
+/**
+ * Registro de Korporia Starter (Erik, 13 nov 2026):
+ *  1. Correo y contraseña (o Google / Microsoft) y aceptación de términos.
+ *  2. Código de 6 dígitos al correo (el segundo paso confirma el correo).
+ *  3. Nombre de la empresa, RFC y número de empleados. Lo demás, después en los perfiles.
+ */
+type Pending = {
   accept_terms: true;
   terms_version: string;
   privacy_version: string;
+  marketing_opt_out: boolean;
+  origin: string | null;
 };
 
 const PENDING_KEY = 'korporia-signup';
+const SALES_WHATSAPP = '528718963470';
 
-function readPending(): PendingSignup | null {
+function readPending(): Pending | null {
   try {
     const raw = sessionStorage.getItem(PENDING_KEY);
-    const p = raw ? (JSON.parse(raw) as PendingSignup) : null;
+    const p = raw ? (JSON.parse(raw) as Pending) : null;
     // Si los términos cambiaron mientras tanto, se vuelven a pedir
     return p && p.terms_version === LEGAL_VERSIONS.terminos && p.privacy_version === LEGAL_VERSIONS.privacidad ? p : null;
   } catch {
@@ -35,7 +36,13 @@ function readPending(): PendingSignup | null {
   }
 }
 
-const SALES_WHATSAPP = '528718963470';
+function savePending(p: Pending) {
+  try {
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify(p));
+  } catch {
+    /* navegación privada: los términos se vuelven a pedir al crear la empresa */
+  }
+}
 
 /** Origen del registro (?origen= de la guía, el sitio o el enlace de un despacho); se guarda durante la visita. */
 const ORIGIN_KEY = 'korporia-origen';
@@ -48,91 +55,13 @@ function readOrigin(): string | null {
     return null;
   }
 }
+readOrigin();
 
-/** Campos de la empresa y aceptación legal: los comparten el registro y "completa tu registro". */
-function CompanyFields({
-  value,
-  onChange,
-}: {
-  value: Omit<PendingSignup, 'accept_terms' | 'terms_version' | 'privacy_version'> & { accept: boolean };
-  onChange: (patch: Partial<typeof value>) => void;
-}) {
-  const tooBig = value.employees > STARTER.maxEmployees;
+function TermsCheck({ accept, optOut, onAccept, onOptOut }: { accept: boolean; optOut: boolean; onAccept: (v: boolean) => void; onOptOut: (v: boolean) => void }) {
   return (
     <>
-      <label className="field">
-        Nombre de tu empresa
-        <input value={value.company_name} onChange={(e) => onChange({ company_name: e.target.value })} autoComplete="organization" required />
-      </label>
-      <label className="field">
-        ¿Cuántos empleados tiene?
-        <input
-          type="number"
-          min={1}
-          max={100000}
-          value={value.employees || ''}
-          onChange={(e) => onChange({ employees: Number(e.target.value) })}
-          inputMode="numeric"
-          required
-        />
-      </label>
-      {tooBig && (
-        <div className="notice warn">
-          <strong>Korporia Starter es para equipos de hasta {STARTER.maxEmployees} empleados</strong>
-          Para tu equipo, empieza con Jornada, que ya incluye RH básico. Escríbenos y te damos de alta hoy mismo.
-          <div style={{ marginTop: 8 }}>
-            <a
-              className="btn small solid"
-              href={`https://wa.me/${SALES_WHATSAPP}?text=${encodeURIComponent(`Hola, quiero empezar con Korporia Jornada (${value.employees} empleados).`)}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Escribir por WhatsApp
-            </a>
-          </div>
-        </div>
-      )}
-      <div className="form-grid">
-        <label className="field">
-          RFC de la empresa
-          <input
-            value={value.rfc}
-            onChange={(e) => onChange({ rfc: e.target.value.toUpperCase().replace(/\s/g, '') })}
-            maxLength={13}
-            autoCapitalize="characters"
-            placeholder="12 o 13 caracteres"
-            required
-          />
-          {value.rfc.length >= 12 && !isValidCompanyRfc(value.rfc) && <span className="muted">Revisa el RFC.</span>}
-        </label>
-        <label className="field">
-          Teléfono de contacto
-          <input type="tel" value={value.phone} onChange={(e) => onChange({ phone: e.target.value })} inputMode="tel" autoComplete="tel" required />
-        </label>
-      </div>
-      <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>Una cuenta de Korporia Starter por empresa (RFC). No te mandamos SMS.</p>
-      <div className="form-grid">
-        <label className="field">
-          Giro
-          <select value={value.industry} onChange={(e) => onChange({ industry: e.target.value })} required>
-            <option value="">Elige uno</option>
-            {INDUSTRIES.map((i) => (
-              <option key={i}>{i}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Estado
-          <select value={value.state} onChange={(e) => onChange({ state: e.target.value })} required>
-            <option value="">Elige uno</option>
-            {MX_STATES.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </label>
-      </div>
       <label className="check">
-        <input type="checkbox" checked={value.accept} onChange={(e) => onChange({ accept: e.target.checked })} required />
+        <input type="checkbox" checked={accept} onChange={(e) => onAccept(e.target.checked)} required />
         <span>
           Acepto los{' '}
           <a href={LEGAL_URLS.terminos} target="_blank" rel="noreferrer">
@@ -154,81 +83,45 @@ function CompanyFields({
         .
       </p>
       <label className="check">
-        <input type="checkbox" checked={value.marketing_opt_out} onChange={(e) => onChange({ marketing_opt_out: e.target.checked })} />
+        <input type="checkbox" checked={optOut} onChange={(e) => onOptOut(e.target.checked)} />
         <span>No deseo recibir novedades ni encuestas</span>
       </label>
     </>
   );
 }
 
-type FormState = Omit<PendingSignup, 'accept_terms' | 'terms_version' | 'privacy_version'> & { accept: boolean };
-
-const emptyForm = (): FormState => ({
-  full_name: '',
-  company_name: '',
-  employees: 0,
-  industry: '',
-  state: '',
-  rfc: '',
-  phone: '',
-  origin: null,
-  marketing_opt_out: false,
-  accept: false,
-});
-
-const formValid = (f: FormState) =>
-  f.company_name.trim().length >= 2 &&
-  f.employees >= 1 &&
-  f.employees <= STARTER.maxEmployees &&
-  Boolean(f.industry) &&
-  Boolean(f.state) &&
-  isValidCompanyRfc(f.rfc) &&
-  f.phone.replace(/\D/g, '').length >= 10 &&
-  f.accept;
-
-const toPending = (f: FormState): PendingSignup => ({
-  full_name: f.full_name.trim(),
-  company_name: f.company_name.trim(),
-  employees: f.employees,
-  industry: f.industry,
-  state: f.state,
-  rfc: f.rfc.trim().toUpperCase(),
-  phone: f.phone.trim(),
-  origin: f.origin ?? readOrigin(),
-  marketing_opt_out: f.marketing_opt_out,
-  accept_terms: true,
-  terms_version: LEGAL_VERSIONS.terminos,
-  privacy_version: LEGAL_VERSIONS.privacidad,
-});
-
-/** Registro por autoservicio en Korporia Starter (sin sesión): datos → código por correo → empresa creada. */
-readOrigin();
-
+/** Paso 1 (sin sesión): correo y contraseña, o Google / Microsoft. */
 export function Signup() {
-  const [form, setForm] = useState<FormState>(emptyForm);
   const [email, setEmail] = useState('');
-  const [step, setStep] = useState<'form' | 'code'>('form');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [accept, setAccept] = useState(false);
+  const [optOut, setOptOut] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const problem = password ? passwordProblem(password) : null;
+  const pending = (): Pending => ({
+    accept_terms: true,
+    terms_version: LEGAL_VERSIONS.terminos,
+    privacy_version: LEGAL_VERSIONS.privacidad,
+    marketing_opt_out: optOut,
+    origin: readOrigin(),
+  });
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!formValid(form) || !form.full_name.trim()) return;
+    if (problem || password !== confirm || !accept) return;
     setBusy(true);
     setError(null);
     const address = email.trim().toLowerCase();
     try {
-      await api('/api/core/signup/start', { body: { email: address, full_name: form.full_name.trim() } });
-      sessionStorage.setItem(PENDING_KEY, JSON.stringify(toPending(form)));
-      const msg = await sendCode(address);
-      if (msg) setError(msg === 'NO_ACCOUNT' ? 'No pudimos preparar tu cuenta. Intenta de nuevo.' : msg);
-      else {
-        setEmail(address);
-        setStep('code');
-      }
+      await api('/api/core/signup/start', { body: { email: address, password, accept_terms: true } });
+      savePending(pending());
+      // Entra con la contraseña; el segundo paso manda el código al correo y así lo confirma
+      const { error: err } = await supabase.auth.signInWithPassword({ email: address, password });
+      if (err) throw new Error('Tu cuenta quedó creada, pero no pudimos entrar. Inicia sesión con tu correo y contraseña.');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo conectar. Revisa tu conexión e intenta de nuevo.');
-    } finally {
+      setError(err instanceof ApiError || err instanceof Error ? err.message : 'No se pudo conectar. Revisa tu conexión e intenta de nuevo.');
       setBusy(false);
     }
   }
@@ -245,33 +138,46 @@ export function Signup() {
           tarjeta.
         </p>
 
-        {step === 'code' ? (
-          <EmailCode email={email} onBack={() => setStep('form')} busyLabel="Creando tu cuenta…" />
-        ) : (
-          <form className="stack" onSubmit={submit} noValidate>
-            <label className="field">
-              Tu nombre
-              <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} autoComplete="name" required />
-            </label>
-            <label className="field">
-              Correo
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
-              <small>Te enviaremos un código para confirmar tu correo; después crearás tu contraseña.</small>
-            </label>
-            <CompanyFields value={form} onChange={(p) => setForm({ ...form, ...p })} />
-            {error && (
-              <div className="notice error" role="alert">
-                {error}
-              </div>
-            )}
-            <button className="btn solid block" type="submit" disabled={busy || !formValid(form) || !form.full_name.trim() || !email.includes('@')}>
-              {busy ? 'Enviando…' : 'Enviarme el código'}
-            </button>
-            <button type="button" className="btn quiet block" onClick={() => navigate('/')}>
-              Ya tengo cuenta: iniciar sesión
-            </button>
-          </form>
-        )}
+        <form className="stack" onSubmit={submit} noValidate>
+          <label className="field">
+            Correo
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+          </label>
+          <label className="field">
+            Contraseña
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
+            <small>{problem ?? 'Al menos 10 caracteres, con letras y números.'}</small>
+          </label>
+          <label className="field">
+            Repite la contraseña
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
+            {confirm && confirm !== password && <small style={{ color: 'var(--stop)' }}>Las contraseñas no coinciden.</small>}
+          </label>
+          <TermsCheck accept={accept} optOut={optOut} onAccept={setAccept} onOptOut={setOptOut} />
+          {error && (
+            <div className="notice error" role="alert">
+              {error}
+            </div>
+          )}
+          <button
+            className="btn solid block"
+            type="submit"
+            disabled={busy || !email.includes('@') || Boolean(problem) || !password || password !== confirm || !accept}
+          >
+            {busy ? 'Creando tu cuenta…' : 'Crear mi cuenta'}
+          </button>
+          <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>
+            Te enviaremos un código a tu correo para confirmarlo.
+          </p>
+          <OAuthButtons
+            disabled={!accept}
+            hint={!accept ? 'Para continuar con Google o Microsoft, primero acepta los términos y el aviso.' : undefined}
+            onBeforeRedirect={() => savePending(pending())}
+          />
+          <button type="button" className="btn quiet block" onClick={() => navigate('/')}>
+            Ya tengo cuenta: iniciar sesión
+          </button>
+        </form>
         <div className="spacer" />
         <WhatsAppLink text="Hola, tengo una duda para registrarme en Korporia." label="¿Dudas? Escríbenos por WhatsApp" />
       </div>
@@ -280,23 +186,50 @@ export function Signup() {
 }
 
 /**
- * Sesión iniciada pero sin empresa: termina el registro. Si el registro ya trae los datos
- * (paso anterior), crea la empresa sola; si no (por ejemplo, entró con Google), los pide.
+ * Paso 3 (sesión verificada, sin empresa): nombre de la empresa, RFC y número de empleados.
+ * Si la persona no aceptó los términos en el paso 1 (por ejemplo, entró con Google desde
+ * "Iniciar sesión"), se le piden aquí.
  */
 export function CompleteSignup({ me, onDone, onSignOut }: { me: Me; onDone: () => Promise<void>; onSignOut: () => void }) {
   const pending = useRef(readPending());
-  const [form, setForm] = useState<FormState>(() => (pending.current ? { ...pending.current, accept: true } : emptyForm()));
-  const [busy, setBusy] = useState(Boolean(pending.current));
+  const [companyName, setCompanyName] = useState('');
+  const [rfc, setRfc] = useState('');
+  const [employees, setEmployees] = useState(0);
+  const [accept, setAccept] = useState(Boolean(pending.current));
+  const [optOut, setOptOut] = useState(pending.current?.marketing_opt_out ?? false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const started = useRef(false);
+  const tooBig = employees > STARTER.maxEmployees;
+  const valid = companyName.trim().length >= 2 && isValidCompanyRfc(rfc) && employees >= 1 && !tooBig && accept;
 
-  async function complete(data: PendingSignup) {
+  useEffect(() => {
+    void me; // la empresa se crea para el usuario de la sesión
+  }, [me]);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!valid) return;
     setBusy(true);
     setError(null);
     try {
-      await api('/api/core/signup/complete', { body: data });
-      sessionStorage.removeItem(PENDING_KEY);
-      navigate('/jornada', { replace: true });
+      await api('/api/core/signup/complete', {
+        body: {
+          company_name: companyName.trim(),
+          rfc: rfc.trim().toUpperCase(),
+          employees,
+          accept_terms: true,
+          terms_version: LEGAL_VERSIONS.terminos,
+          privacy_version: LEGAL_VERSIONS.privacidad,
+          marketing_opt_out: optOut,
+          origin: pending.current?.origin ?? readOrigin(),
+        },
+      });
+      try {
+        sessionStorage.removeItem(PENDING_KEY);
+      } catch {
+        /* sin almacenamiento */
+      }
+      navigate('/rh/empresa', { replace: true });
       await onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo conectar. Revisa tu conexión e intenta de nuevo.');
@@ -304,41 +237,62 @@ export function CompleteSignup({ me, onDone, onSignOut }: { me: Me; onDone: () =
     }
   }
 
-  useEffect(() => {
-    if (pending.current && !started.current) {
-      started.current = true;
-      void complete(pending.current);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   if (busy && !error) return <Spinner label="Creando tu empresa…" />;
 
   return (
     <div className="content" style={{ paddingBottom: 48 }}>
-      <h1>Completa tu registro</h1>
-      <p className="muted">Faltan los datos de tu empresa para activar Korporia Starter.</p>
-      <form
-        className="stack"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (formValid(form)) void complete(toPending({ ...form, full_name: form.full_name || '' }));
-        }}
-        noValidate
-      >
-        <CompanyFields value={form} onChange={(p) => setForm({ ...form, ...p })} />
+      <h1>Tu empresa</h1>
+      <p className="muted">Con estos datos activamos Korporia Starter. Lo demás (domicilio, giro, razón social) lo completas después en el perfil de la empresa.</p>
+      <form className="stack" onSubmit={submit} noValidate>
+        <label className="field">
+          Nombre de tu empresa
+          <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} autoComplete="organization" required />
+        </label>
+        <label className="field">
+          RFC de la empresa
+          <input
+            value={rfc}
+            onChange={(e) => setRfc(e.target.value.toUpperCase().replace(/\s/g, ''))}
+            maxLength={13}
+            autoCapitalize="characters"
+            placeholder="12 o 13 caracteres"
+            required
+          />
+          <small>{rfc.length >= 12 && !isValidCompanyRfc(rfc) ? 'Revisa el RFC.' : 'Una cuenta de Korporia Starter por empresa (RFC).'}</small>
+        </label>
+        <label className="field">
+          ¿Cuántos empleados tiene?
+          <input type="number" min={1} max={100000} value={employees || ''} onChange={(e) => setEmployees(Number(e.target.value))} inputMode="numeric" required />
+        </label>
+        {tooBig && (
+          <div className="notice warn">
+            <strong>Korporia Starter es para equipos de hasta {STARTER.maxEmployees} empleados</strong>
+            Para tu equipo, empieza con Jornada, que ya incluye RH básico. Escríbenos y te damos de alta hoy mismo.
+            <div style={{ marginTop: 8 }}>
+              <a
+                className="btn small solid"
+                href={`https://wa.me/${SALES_WHATSAPP}?text=${encodeURIComponent(`Hola, quiero empezar con Korporia Jornada (${employees} empleados).`)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Escribir por WhatsApp
+              </a>
+            </div>
+          </div>
+        )}
+        {!pending.current && <TermsCheck accept={accept} optOut={optOut} onAccept={setAccept} onOptOut={setOptOut} />}
         {error && (
           <div className="notice error" role="alert">
             {error}
           </div>
         )}
-        <button className="btn solid block" type="submit" disabled={busy || !formValid(form)}>
-          {busy ? 'Creando tu empresa…' : 'Crear mi empresa'}
+        <button className="btn solid block" type="submit" disabled={busy || !valid}>
+          {busy ? 'Creando tu empresa…' : 'Activar Korporia Starter'}
         </button>
         <button type="button" className="btn quiet block" onClick={onSignOut}>
           Salir
         </button>
       </form>
-      {me.isPlatformAdmin && <p className="muted">Eres administrador de la plataforma: también puedes crear empresas para clientes.</p>}
     </div>
   );
 }

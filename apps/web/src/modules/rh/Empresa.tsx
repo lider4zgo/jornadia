@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { isValidCompanyRfc, PLAN_LABELS, TAX_REGIMES } from '@korporia/core';
+import { INDUSTRIES, isValidCompanyRfc, MX_STATES, PLAN_LABELS, TAX_REGIMES } from '@korporia/core';
+import { SuggestSelect } from '../../common';
 import { Calendario } from './Calendario';
 import { api, ApiError } from '../../lib/api';
 import { can, writable } from '../../lib/access';
@@ -7,7 +8,17 @@ import { formatDate } from '../../lib/clock';
 import type { Me } from '../../types';
 
 interface Profile {
+  name: string;
   legal_name: string | null;
+  street: string | null;
+  neighborhood: string | null;
+  postal_code: string | null;
+  city: string | null;
+  state: string | null;
+  company_phone: string | null;
+  industry: string | null;
+  declared_employees: number | null;
+  custom_industries: string[];
   tax_id: string | null;
   tax_regime: string | null;
   address: string | null;
@@ -42,8 +53,12 @@ export function Empresa({ me }: { me: Me }) {
     setBusy(true);
     setMsg(null);
     try {
-      await api(`/api/core/companies/${company.id}/profile`, { method: 'PATCH', body: { ...f } });
-      setMsg({ ok: true, text: 'Guardado. Los trabajadores verán estos datos en su aviso de privacidad.' });
+      const { custom_industries: _c, address: _a, ...body } = f!;
+      void _c;
+      void _a;
+      const r = await api<{ company: Profile }>(`/api/core/companies/${company.id}/profile`, { method: 'PATCH', body });
+      setF(r.company);
+      setMsg({ ok: true, text: 'Guardado. Los trabajadores verán la razón social, el domicilio y el contacto en su aviso de privacidad.' });
     } catch (err) {
       setMsg({ ok: false, text: err instanceof ApiError ? err.message : 'No se pudo guardar.' });
     } finally {
@@ -51,7 +66,8 @@ export function Empresa({ me }: { me: Me }) {
     }
   }
 
-  const missing = f && (!f.address || (!f.privacy_email && !f.privacy_phone));
+  const missing = f && (!f.legal_name || !f.tax_id || !f.street || !f.postal_code || !f.city || !f.state || (!f.privacy_email && !f.privacy_phone));
+  const set = (k: keyof Profile) => (e: { target: { value: string } }) => f && setF({ ...f, [k]: e.target.value });
   return (
     <div className="stack">
       <h1>Empresa</h1>
@@ -77,14 +93,36 @@ export function Empresa({ me }: { me: Me }) {
         </section>
       )}
       <form className="sheet stack" onSubmit={save}>
-        <h2>Datos del patrón</h2>
+        <h2>Perfil de la empresa</h2>
         <p className="muted" style={{ margin: 0 }}>
           Tu empresa es la responsable de los datos de sus trabajadores y Korporia su encargado. La razón social, el domicilio y el contacto
           aparecen en el aviso que cada trabajador firma en su app.
         </p>
-        {missing && <div className="notice warn">Completa el domicilio y un correo o teléfono para temas de privacidad.</div>}
+        {missing && <div className="notice warn">Faltan datos: completa la razón social, el RFC, el domicilio fiscal y un correo o teléfono para temas de privacidad.</div>}
         {f && (
           <fieldset disabled={!canEdit} className="form-grid" style={{ border: 0, padding: 0, margin: 0 }}>
+            <label className="field">
+              Nombre comercial
+              <input value={f.name} onChange={set('name')} required />
+            </label>
+            <label className="field">
+              Giro
+              <SuggestSelect value={f.industry ?? ''} options={[...INDUSTRIES, ...f.custom_industries]} onChange={(v) => setF({ ...f, industry: v })} />
+            </label>
+            <label className="field">
+              Número de empleados
+              <input
+                type="number"
+                min={1}
+                value={f.declared_employees ?? ''}
+                onChange={(e) => setF({ ...f, declared_employees: e.target.value ? Number(e.target.value) : null })}
+                inputMode="numeric"
+              />
+            </label>
+            <label className="field">
+              Teléfono de la empresa
+              <input value={f.company_phone ?? ''} onChange={set('company_phone')} inputMode="tel" autoComplete="tel" />
+            </label>
             <label className="field">
               Razón social o nombre del patrón
               <input value={f.legal_name ?? ''} onChange={(e) => setF({ ...f, legal_name: e.target.value })} placeholder={company.name} />
@@ -111,8 +149,29 @@ export function Empresa({ me }: { me: Me }) {
               </select>
             </label>
             <label className="field">
-              Domicilio fiscal
-              <input value={f.address ?? ''} onChange={(e) => setF({ ...f, address: e.target.value })} />
+              Calle y número
+              <input value={f.street ?? ''} onChange={set('street')} autoComplete="street-address" />
+            </label>
+            <label className="field">
+              Colonia
+              <input value={f.neighborhood ?? ''} onChange={set('neighborhood')} />
+            </label>
+            <label className="field">
+              Código postal
+              <input value={f.postal_code ?? ''} onChange={(e) => setF({ ...f, postal_code: e.target.value.replace(/\D/g, '').slice(0, 5) })} inputMode="numeric" autoComplete="postal-code" />
+            </label>
+            <label className="field">
+              Ciudad o municipio
+              <input value={f.city ?? ''} onChange={set('city')} autoComplete="address-level2" />
+            </label>
+            <label className="field">
+              Estado
+              <select value={f.state ?? ''} onChange={set('state')}>
+                <option value="">Elige uno</option>
+                {MX_STATES.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
             </label>
             <label className="field">
               Correo para privacidad

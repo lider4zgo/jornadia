@@ -189,3 +189,60 @@ export function PinPrompt({
     </Modal>
   );
 }
+
+/**
+ * Lista desplegable con sugerencias y, al final, "Otro (escribir)": si la opción no está,
+ * la persona la escribe. El valor es siempre el texto elegido o escrito.
+ */
+export function SuggestSelect({
+  value,
+  options,
+  onChange,
+  placeholder = 'Elige uno',
+  otherLabel = 'Otro (escribir)',
+  disabled,
+}: {
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+  otherLabel?: string;
+  disabled?: boolean;
+}) {
+  const list = options.filter((o, i) => o && o !== 'Otro' && options.indexOf(o) === i);
+  const [typing, setTyping] = useState(Boolean(value) && !list.includes(value));
+  // Las opciones pueden llegar después (puestos o giros propios de la empresa)
+  const key = list.join('|');
+  useEffect(() => {
+    if (value) setTyping(!list.includes(value));
+  }, [value, key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const OTHER = '__otro__';
+  return (
+    <>
+      <select
+        value={typing ? OTHER : value}
+        disabled={disabled}
+        onChange={(e) => {
+          if (e.target.value === OTHER) {
+            setTyping(true);
+            onChange('');
+          } else {
+            setTyping(false);
+            onChange(e.target.value);
+          }
+        }}
+      >
+        <option value="">{placeholder}</option>
+        {list.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+        <option value={OTHER}>{otherLabel}</option>
+      </select>
+      {typing && (
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Escríbelo aquí" maxLength={80} disabled={disabled} autoFocus />
+      )}
+    </>
+  );
+}

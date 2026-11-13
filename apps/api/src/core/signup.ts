@@ -5,41 +5,46 @@ import type { AppEnv } from '../env';
 import { invalidateAccess, requireAuth } from '../lib/auth';
 import { EMAIL_RE, str } from '../lib/input';
 import { RFC_TAKEN, rfcInUse } from '../lib/rfc';
+import { passwordProblem } from './device';
 import { adminClient, audit, coreDb } from '../lib/supabase';
 
 /**
- * Registro por autoservicio (Korporia Starter).
- *
- * En Supabase el registro público está desactivado, así que nadie crea cuentas por fuera.
- *  1. POST /api/core/signup/start    crea la cuenta del correo (si no existe); la app pide a
- *                                    Supabase el código de un solo uso y la persona lo escribe.
- *  2. POST /api/core/signup/complete con la sesión ya iniciada: crea la empresa en Korporia
- *                                    Starter y registra la aceptación de términos y aviso.
+ * Registro por autoservicio (Korporia Starter), Erik 13 nov 2026.
+ *  1. POST /api/core/signup/start    { email, password, accept_terms } crea la cuenta. La app entra
+ *                                    con la contraseña y el segundo paso manda el código al correo:
+ *                                    así se confirma el correo.
+ *  2. POST /api/core/signup/complete con la sesión verificada: nombre de la empresa, RFC y número
+ *                                    de empleados; crea la empresa en Korporia Starter y registra la
+ *                                    aceptación de términos y aviso. Lo demás se completa en los perfiles.
+ * Con Google o Microsoft se entra directo y se llega igual al paso 2.
  */
 export const signup = new Hono<AppEnv>();
 
 signup.post('/start', async (c) => {
   const b = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
   const email = str(b.email, 254).toLowerCase();
-  const fullName = str(b.full_name, 120);
+  const password = typeof b.password === 'string' ? b.password : '';
   if (!EMAIL_RE.test(email)) throw new HTTPException(400, { message: 'Escribe un correo válido.' });
   if (email.endsWith(`@${c.env.WORKER_EMAIL_DOMAIN}`) || email.endsWith(`.${c.env.WORKER_EMAIL_DOMAIN}`)) {
     throw new HTTPException(400, { message: 'Escribe un correo válido.' });
   }
+  const problem = passwordProblem(password);
+  if (problem) throw new HTTPException(400, { message: problem });
+  if (b.accept_terms !== true) throw new HTTPException(400, { message: 'Para continuar, acepta los términos y el aviso de privacidad.' });
 
-  const admin = adminClient(c.env);
-  const created = await admin.auth.admin.createUser({
-    email,
-    // El correo se comprueba con el código de un solo uso antes de tener sesión
-    email_confirm: true,
-    user_metadata: fullName ? { full_name: fullName } : {},
-  });
-  // Si ya existe, no pasa nada: el código de acceso sirve igual para entrar
-  if (created.error && !/already|registered|exists/i.test(created.error.message)) {
+  // El correo se confirma con el código de 6 dígitos al entrar por primera vez (segundo paso):
+  // sin ese código la cuenta no ve ni crea nada.
+  const created = await adminClient(c.env).auth.admin.createUser({ email, password, email_confirm: true });
+  if (created.error) {
+    if (/already|registered|exists/i.test(created.error.message)) {
+      throw new HTTPException(409, { message: 'Ya hay una cuenta con este correo. Inicia sesión o usa "¿Olvidaste tu contraseña?".' });
+    }
     console.error('signup createUser failed', created.error);
-    throw new HTTPException(500, { message: 'No pudimos crear tu cuenta. Intenta de nuevo.' });
+    throw new HTTPException(400, {
+      message: /weak|pwned|leak/i.test(created.error.message) ? 'Esa contraseña es demasiado común. Elige otra.' : 'No pudimos crear tu cuenta. Intenta de nuevo.',
+    });
   }
-  return c.json({ ok: true });
+  return c.json({ ok: true }, 201);
 });
 
 signup.post('/complete', requireAuth, async (c) => {
@@ -53,7 +58,6 @@ signup.post('/complete', requireAuth, async (c) => {
   const industry = str(b.industry, 60);
   const state = str(b.state, 60);
   const rfc = str(b.rfc, 13).toUpperCase();
-  const phone = str(b.phone, 20).replace(/[^\d+]/g, '');
   const origin = normalizeOrigin(b.origin);
   if (companyName.length < 2) throw new HTTPException(400, { message: 'Escribe el nombre de tu empresa.' });
   if (!Number.isInteger(employees) || employees < 1) throw new HTTPException(400, { message: 'Escribe cuántos empleados tiene tu empresa.' });
@@ -64,7 +68,6 @@ signup.post('/complete', requireAuth, async (c) => {
   }
   // T-08: una cuenta Starter por empresa, con su RFC
   if (!isValidCompanyRfc(rfc)) throw new HTTPException(400, { message: 'Escribe el RFC de tu empresa: 12 caracteres para persona moral o 13 para persona física.' });
-  if (phone.replace(/\D/g, '').length < 10) throw new HTTPException(400, { message: 'Escribe un teléfono de contacto de 10 dígitos.' });
   if (b.accept_terms !== true) throw new HTTPException(400, { message: 'Para continuar, acepta los términos y el aviso de privacidad.' });
   if (b.terms_version !== LEGAL_VERSIONS.terminos || b.privacy_version !== LEGAL_VERSIONS.privacidad) {
     throw new HTTPException(409, { message: 'Los términos se actualizaron. Recarga la página para ver la versión vigente.' });
@@ -124,7 +127,7 @@ signup.post('/complete', requireAuth, async (c) => {
     // Checador hasta el día 90 y RH básico hasta el mes 6; después, solo lectura
     core.from('company_modules').update({ writable_until: clockUntil.toISOString() }).eq('company_id', companyId).eq('module_key', 'jornada'),
     core.from('company_modules').update({ writable_until: hrUntil.toISOString() }).eq('company_id', companyId).eq('module_key', 'rh'),
-    core.from('companies').update({ declared_employees: employees, industry: industry || null, state: state || null, tax_id: rfc, signup_phone: phone, signup_origin: origin }).eq('id', companyId),
+    core.from('companies').update({ declared_employees: employees, industry: industry || null, state: state || null, tax_id: rfc, signup_origin: origin }).eq('id', companyId),
     core.from('legal_acceptances').insert([
       { company_id: companyId, user_id: auth.userId, document: 'terminos', version: LEGAL_VERSIONS.terminos, ip, user_agent: userAgent },
       { company_id: companyId, user_id: auth.userId, document: 'privacidad', version: LEGAL_VERSIONS.privacidad, ip, user_agent: userAgent },

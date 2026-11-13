@@ -11,6 +11,7 @@ import { my } from './core/my';
 import { signup, waitlist } from './core/signup';
 import { referrals } from './core/referrals';
 import { account, device } from './core/device';
+import { profile } from './core/profile';
 import { activation, workerAccess } from './core/worker-access';
 import { runDailyJobs } from './lib/daily';
 import { serveStatic } from './lib/static';
@@ -55,6 +56,7 @@ app.route('/api/core/waitlist', waitlist);
 app.route('/api/core/referrals', referrals);
 app.route('/api/core/device', device);
 app.route('/api/core/account', account);
+app.route('/api/core/profile', profile);
 
 // Módulos: cada uno en /api/<módulo>
 for (const module of MODULE_REGISTRY) app.route(`/api/${module.key}`, module.routes);

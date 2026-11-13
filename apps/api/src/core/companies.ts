@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { isValidCompanyRfc, MODULES, TAX_REGIMES } from '@korporia/core';
+import { INDUSTRIES, isValidCompanyRfc, MODULES, TAX_REGIMES } from '@korporia/core';
 import type { AppEnv } from '../env';
 import { invalidateAccess, requireAuth, requirePermission } from '../lib/auth';
 import { adminClient, audit, coreDb } from '../lib/supabase';
@@ -141,14 +141,17 @@ companies.patch('/:id/plan', async (c) => {
 });
 
 /**
- * Datos de la empresa que se usan en el aviso de privacidad de sus trabajadores.
- * GET /api/core/companies/:id/profile · PATCH { legal_name, tax_id, tax_regime, address, privacy_email, privacy_phone }
+ * Perfil de la empresa: nombre comercial, datos fiscales, domicilio por partes, teléfono, giro,
+ * número de empleados y los datos de contacto del aviso de privacidad de sus trabajadores.
+ * GET /api/core/companies/:id/profile · PATCH con cualquiera de esos campos
  */
+const PROFILE_FIELDS = 'id, name, code, legal_name, tax_id, tax_regime, address, street, neighborhood, postal_code, city, state, company_phone, industry, declared_employees, custom_positions, custom_industries, privacy_email, privacy_phone';
+
 companies.get('/:id/profile', async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
   requirePermission(auth, id, 'core.personal.ver', 'core.empresa.editar');
-  const { data } = await coreDb(adminClient(c.env)).from('companies').select('id, name, code, legal_name, tax_id, tax_regime, address, privacy_email, privacy_phone').eq('id', id).single();
+  const { data } = await coreDb(adminClient(c.env)).from('companies').select(PROFILE_FIELDS).eq('id', id).single();
   return c.json({ company: data });
 });
 
@@ -178,6 +181,33 @@ companies.patch('/:id/profile', async (c) => {
     if (v && !(v in TAX_REGIMES)) throw new HTTPException(400, { message: 'Régimen fiscal inválido.' });
     patch.tax_regime = v || null;
   }
+  if ('name' in b) {
+    const name = str(b.name, 120);
+    if (name.length < 2) throw new HTTPException(400, { message: 'Escribe el nombre comercial.' });
+    patch.name = name;
+  }
+  if ('street' in b) patch.street = str(b.street, 160) || null;
+  if ('neighborhood' in b) patch.neighborhood = str(b.neighborhood, 100) || null;
+  if ('postal_code' in b) {
+    const cp = str(b.postal_code, 5);
+    if (cp && !/^\d{5}$/.test(cp)) throw new HTTPException(400, { message: 'El código postal tiene 5 números.' });
+    patch.postal_code = cp || null;
+  }
+  if ('city' in b) patch.city = str(b.city, 100) || null;
+  if ('state' in b) patch.state = str(b.state, 60) || null;
+  if ('company_phone' in b) {
+    const ph = str(b.company_phone, 20).replace(/[^\d+]/g, '');
+    if (ph && ph.replace(/\D/g, '').length < 10) throw new HTTPException(400, { message: 'El teléfono debe tener 10 dígitos.' });
+    patch.company_phone = ph || null;
+  }
+  if ('industry' in b) patch.industry = str(b.industry, 80) || null;
+  if ('declared_employees' in b) {
+    const n = Number(b.declared_employees);
+    if (b.declared_employees != null && b.declared_employees !== '' && (!Number.isInteger(n) || n < 1 || n > 100000)) {
+      throw new HTTPException(400, { message: 'Revisa el número de empleados.' });
+    }
+    patch.declared_employees = b.declared_employees === '' || b.declared_employees == null ? null : n;
+  }
   if ('address' in b) patch.address = str(b.address, 300) || null;
   if ('privacy_email' in b) {
     const e = str(b.privacy_email, 254).toLowerCase();
@@ -186,11 +216,28 @@ companies.patch('/:id/profile', async (c) => {
   }
   if ('privacy_phone' in b) patch.privacy_phone = str(b.privacy_phone, 20) || null;
   if (!Object.keys(patch).length) throw new HTTPException(400, { message: 'Nada que guardar.' });
-  const { data, error } = await coreDb(adminClient(c.env))
+  const core = coreDb(adminClient(c.env));
+  // Domicilio armado para el aviso de los trabajadores, a partir de las partes
+  const parts = ['street', 'neighborhood', 'postal_code', 'city', 'state'];
+  if (parts.some((k) => k in patch)) {
+    const { data: cur } = await core.from('companies').select('street, neighborhood, postal_code, city, state, custom_industries').eq('id', id).single();
+    const merged = { ...cur, ...patch } as Record<string, string | null>;
+    const line = [merged.street, merged.neighborhood ? `Col. ${merged.neighborhood}` : null, merged.postal_code ? `C.P. ${merged.postal_code}` : null, merged.city, merged.state]
+      .filter(Boolean)
+      .join(', ');
+    if (line) patch.address = line;
+  }
+  // Giro que no está en la lista: se guarda entre los giros propios de la empresa
+  if (typeof patch.industry === 'string' && !(INDUSTRIES as readonly string[]).includes(patch.industry)) {
+    const { data: cur } = await core.from('companies').select('custom_industries').eq('id', id).single();
+    const list: string[] = cur?.custom_industries ?? [];
+    if (!list.includes(patch.industry)) patch.custom_industries = [...list, patch.industry].slice(-20);
+  }
+  const { data, error } = await core
     .from('companies')
     .update(patch)
     .eq('id', id)
-    .select('id, name, code, legal_name, tax_id, tax_regime, address, privacy_email, privacy_phone')
+    .select(PROFILE_FIELDS)
     .single();
   if (error) throw new HTTPException(500, { message: 'No se pudieron guardar los datos.' });
   await audit(c.env, { company_id: id, actor_id: auth.userId, action: 'company.profile_updated', entity: 'core.companies', entity_id: id, details: patch });

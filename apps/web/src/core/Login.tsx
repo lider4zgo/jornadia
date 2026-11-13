@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Logo, WhatsAppLink } from '../common';
 import { navigate } from '../lib/router';
 import { EmailCode, sendCode } from './EmailCode';
+import { OAuthButtons } from './OAuthButtons';
 
 const CODE_KEY = 'korporia-company-code';
 
@@ -273,6 +274,7 @@ export function Login() {
           </button>
           {mode === 'staff' && (
             <>
+              {staffMethod === 'password' && <OAuthButtons />}
               <button
                 type="button"
                 className="btn quiet block"
