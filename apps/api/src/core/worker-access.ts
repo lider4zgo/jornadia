@@ -130,6 +130,29 @@ workerAccess.post('/activate', async (c) => {
   return c.json({ token_hash });
 });
 
+/** Genera y guarda (hasheado) un código de activación de 7 días; el PIN anterior sigue hasta que se active. */
+export async function issueActivation(env: Env, employee: { id: string; company_id: string; user_id: string | null }): Promise<{ code: string; expires: string }> {
+  const code = newActivationCode();
+  const expires = new Date(Date.now() + ACTIVATION_DAYS * 86_400_000).toISOString();
+  const { error } = await coreDb(adminClient(env)).from('employee_credentials').upsert(
+    {
+      employee_id: employee.id,
+      company_id: employee.company_id,
+      activation_hash: await hashSecret(code),
+      activation_expires_at: expires,
+      failed_attempts: 0,
+      locked_until: null,
+    },
+    { onConflict: 'employee_id' },
+  );
+  if (error) {
+    console.error('activation upsert failed', error);
+    throw new HTTPException(500, { message: 'No se pudo generar el código.' });
+  }
+  if (employee.user_id) invalidateAccess(employee.user_id);
+  return { code, expires };
+}
+
 /**
  * Administración: genera un código de activación para que el trabajador cree (o cambie) su PIN.
  * POST /api/core/worker-access/:employeeId/activation → { code, expires_at, company_code, employee_number }
@@ -148,23 +171,7 @@ activation.post('/:id/activation', async (c) => {
   if (!employee.active) throw new HTTPException(400, { message: 'El colaborador está dado de baja.' });
   if (!employee.user_id) throw new HTTPException(400, { message: 'El colaborador no tiene cuenta de acceso.' });
 
-  const code = newActivationCode();
-  const expires = new Date(Date.now() + ACTIVATION_DAYS * 86_400_000).toISOString();
-  const { error } = await core.from('employee_credentials').upsert(
-    {
-      employee_id: employee.id,
-      company_id: employee.company_id,
-      activation_hash: await hashSecret(code),
-      activation_expires_at: expires,
-      failed_attempts: 0,
-      locked_until: null,
-    },
-    { onConflict: 'employee_id' },
-  );
-  if (error) {
-    console.error('activation upsert failed', error);
-    throw new HTTPException(500, { message: 'No se pudo generar el código.' });
-  }
+  const { code, expires } = await issueActivation(c.env, employee);
   const { data: company } = await core.from('companies').select('code, name').eq('id', employee.company_id).single();
   invalidateAccess(employee.user_id);
   await audit(c.env, { company_id: employee.company_id, actor_id: auth.userId, action: 'worker.activation_issued', entity: 'core.employees', entity_id: employee.id });

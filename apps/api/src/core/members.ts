@@ -1,12 +1,12 @@
 import { requireRecentCode } from './device';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { canGrantRole, workerEmail } from '@korporia/core';
+import { canGrantRole } from '@korporia/core';
 import type { AppEnv } from '../env';
 import { accessFor, requireAuth, requirePermission } from '../lib/auth';
-import { EMAIL_RE, randomSecret, str, UUID_RE } from '../lib/input';
+import { EMAIL_RE, str, UUID_RE } from '../lib/input';
 import { adminClient, audit, coreDb } from '../lib/supabase';
-import { MODULE_REGISTRY } from '../modules';
+import { createWorkerAccount } from './workers';
 
 export const members = new Hono<AppEnv>();
 members.use('*', requireAuth);
@@ -91,88 +91,56 @@ members.post('/', async (c) => {
     }
   }
 
-  let email: string;
-  let password: string;
+  let employee: { id: string; employee_number: string; full_name: string } | null = null;
+  let membershipId: string;
   if (isWorker) {
     // El colaborador no usa contraseña: entra con código de empresa + número + su PIN
-    // (lo crea con el código de activación). La cuenta lleva una contraseña aleatoria que nadie conoce.
-    password = randomSecret();
-    email = workerEmail(employeeNumber, company.code, c.env.WORKER_EMAIL_DOMAIN);
-  } else {
-    email = str(b.email).toLowerCase();
-    password = typeof b.password === 'string' ? b.password : '';
-    if (!EMAIL_RE.test(email) || password.length < 8) throw new HTTPException(400, { message: 'Correo o contraseña inválidos (mínimo 8 caracteres).' });
-  }
-
-  const created = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: fullName, company_id: companyId, employee_number: employeeNumber || undefined },
-  });
-  if (created.error || !created.data.user) {
-    const msg = created.error?.message?.includes('already') ? 'Ya existe una cuenta con ese número o correo.' : 'No se pudo crear la cuenta.';
-    throw new HTTPException(409, { message: msg });
-  }
-  const userId = created.data.user.id;
-  let employeeId: string | null = null;
-
-  const rollback = async () => {
-    if (employeeId) await core.from('employees').delete().eq('id', employeeId);
-    await admin.auth.admin.deleteUser(userId);
-  };
-
-  const { data: membership, error: mErr } = await core
-    .from('memberships')
-    .insert({ company_id: companyId, user_id: userId, role_id: role.id })
-    .select('id')
-    .single();
-  if (mErr || !membership) {
-    await rollback();
-    throw new HTTPException(500, { message: 'No se pudo completar el alta.' });
-  }
-
-  let employee = null;
-  if (isWorker) {
-    const defaultSite = str(b.default_site_id, 36);
-    const res = await core
-      .from('employees')
-      .insert({
-        company_id: companyId,
-        user_id: userId,
+    const created = await createWorkerAccount(c.env, {
+      actorId: auth.userId,
+      companyId,
+      companyCode: company.code,
+      roleId: role.id,
+      activeModules: new Set((companyModules ?? []).map((m) => m.module_key as string)),
+      worker: {
         employee_number: employeeNumber,
         full_name: fullName,
         phone: str(b.phone, 20) || null,
         position: str(b.position, 80) || null,
-        default_site_id: UUID_RE.test(defaultSite) ? defaultSite : null,
-      })
-      .select('id, employee_number, full_name')
-      .single();
-    if (res.error || !res.data) {
-      await rollback();
-      const dup = res.error?.code === '23505';
-      throw new HTTPException(dup ? 409 : 500, { message: dup ? 'Ese número de empleado ya existe.' : 'No se pudo completar el alta.' });
+        default_site_id: str(b.default_site_id, 36) || null,
+      },
+      body: b,
+    });
+    employee = created.employee;
+    membershipId = created.membershipId;
+  } else {
+    const email = str(b.email).toLowerCase();
+    const password = typeof b.password === 'string' ? b.password : '';
+    if (!EMAIL_RE.test(email) || password.length < 8) throw new HTTPException(400, { message: 'Correo o contraseña inválidos (mínimo 8 caracteres).' });
+    const created = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name: fullName, company_id: companyId },
+    });
+    if (created.error || !created.data.user) {
+      const msg = created.error?.message?.includes('already') ? 'Ya existe una cuenta con ese número o correo.' : 'No se pudo crear la cuenta.';
+      throw new HTTPException(409, { message: msg });
     }
-    employee = res.data;
-    employeeId = res.data.id;
-
-    // Cada módulo contratado prepara sus propios datos del colaborador
-    const active = new Set((companyModules ?? []).map((m) => m.module_key as string));
-    try {
-      for (const m of MODULE_REGISTRY) {
-        if (m.onEmployeeCreated && active.has(m.key)) {
-          await m.onEmployeeCreated(c.env, { actorId: auth.userId, employeeId: res.data.id, companyId, body: b });
-        }
-      }
-    } catch (err) {
-      console.error('onEmployeeCreated failed', err);
-      await rollback();
+    const userId = created.data.user.id;
+    const { data: membership, error: mErr } = await core
+      .from('memberships')
+      .insert({ company_id: companyId, user_id: userId, role_id: role.id })
+      .select('id')
+      .single();
+    if (mErr || !membership) {
+      await admin.auth.admin.deleteUser(userId);
       throw new HTTPException(500, { message: 'No se pudo completar el alta.' });
     }
+    membershipId = membership.id;
   }
 
   if (Array.isArray(b.site_ids)) {
-    const rows = b.site_ids.filter((s): s is string => typeof s === 'string' && UUID_RE.test(s)).map((site_id) => ({ membership_id: membership.id, site_id }));
+    const rows = b.site_ids.filter((s): s is string => typeof s === 'string' && UUID_RE.test(s)).map((site_id) => ({ membership_id: membershipId, site_id }));
     if (rows.length) {
       const { error } = await core.from('membership_sites').insert(rows);
       if (error) console.error('membership_sites insert failed', error);
@@ -184,8 +152,11 @@ members.post('/', async (c) => {
     actor_id: auth.userId,
     action: `member.created.${roleKey}`,
     entity: isWorker ? 'core.employees' : 'core.memberships',
-    entity_id: employee?.id ?? membership.id,
+    entity_id: employee?.id ?? membershipId,
   });
 
-  return c.json({ employee, role: roleKey, login: isWorker ? { company_code: company.code, employee_number: employeeNumber } : { email } }, 201);
+  return c.json(
+    { employee, role: roleKey, login: isWorker ? { company_code: company.code, employee_number: employeeNumber } : { email: str(b.email).toLowerCase() } },
+    201,
+  );
 });

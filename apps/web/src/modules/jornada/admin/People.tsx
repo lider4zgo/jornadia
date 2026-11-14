@@ -1,3 +1,4 @@
+import { navigate } from '../../../lib/router';
 import { WeeklyLimits } from './WeeklyLimits';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../../../lib/api';
@@ -105,9 +106,14 @@ export function People({ me, onChanged }: { me: Me; onChanged: () => void }) {
           </p>
         </div>
         {isManager && (
-          <button className="btn solid" onClick={() => setShowForm(true)} disabled={active >= employeeLimit}>
-            Agregar colaborador
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn" onClick={() => navigate('/importar')}>
+              Importar desde Excel
+            </button>
+            <button className="btn solid" onClick={() => setShowForm(true)} disabled={active >= employeeLimit}>
+              Agregar colaborador
+            </button>
+          </div>
         )}
       </div>
 

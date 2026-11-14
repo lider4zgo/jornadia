@@ -1,3 +1,4 @@
+import { navigate } from '../../lib/router';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   CONTRACT_TYPES,
@@ -85,9 +86,14 @@ export function Expedientes({ me }: { me: Me }) {
           </p>
         </div>
         {canHire && (
-          <button className="btn solid" onClick={() => setCreating(true)} disabled={activeCount >= limit}>
-            Alta guiada
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn" onClick={() => navigate('/importar')}>
+              Importar desde Excel
+            </button>
+            <button className="btn solid" onClick={() => setCreating(true)} disabled={activeCount >= limit}>
+              Alta guiada
+            </button>
+          </div>
         )}
       </div>
       <div className="toolbar">

@@ -9,6 +9,7 @@ import { isConfigured, openedFromRecoveryLink, supabase } from './lib/supabase';
 import { LegalFooter, Mark, Modal, Spinner, SUPPORT_EMAIL, WhatsAppLink } from './common';
 import { DeviceGate, EmailCodeStep } from './core/DeviceGate';
 import { MyProfile } from './core/MyProfile';
+import { ImportPeople } from './core/ImportPeople';
 import { setStepUpHandler } from './lib/trust';
 import { Login } from './core/Login';
 import { CreateCompany } from './core/CreateCompany';
@@ -148,7 +149,8 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
   const path = usePath();
   const [moduleKey, section] = splitPath(path);
   const available = WEB_MODULES.filter((m) => canEnterModule(me, m.key));
-  const onProfile = moduleKey === 'perfil' && !me.worker;
+  const onImport = moduleKey === 'importar' && Boolean(me.company) && me.permissions.includes('core.personal.gestionar');
+  const onProfile = (moduleKey === 'perfil' && !me.worker) || onImport;
   // Cambios sensibles: la API pide un código reciente y la app lo pide en una ventana
   const [stepUp, setStepUp] = useState<((ok: boolean) => void) | null>(null);
   useEffect(() => {
@@ -209,7 +211,9 @@ function Shell({ me, email, reload, signOut }: { me: Me; email?: string; reload:
       </header>
       <UpdateBanner />
       <PlanBanner me={me} />
-      {onProfile ? (
+      {onImport ? (
+        <ImportPeople me={me} />
+      ) : onProfile ? (
         <MyProfile me={me} onSaved={() => void reload()} />
       ) : (
         <Body me={me} current={current?.key} section={current?.key === moduleKey ? section : ''} reload={reload} />

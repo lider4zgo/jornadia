@@ -778,3 +778,18 @@ tr:last-child td { border-bottom: 0; }
 /* Nombre en la barra superior: lleva a Mi perfil */
 .who-link { background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .who-link:hover span { text-decoration: underline; }
+
+/* PLT-11: hoja de accesos (al imprimir solo sale esa parte) */
+.import-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.import-bar > span { display: block; height: 100%; background: var(--action); transition: width 0.2s; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+.pill.new { background: #e3f4ea; color: #1b6b3a; }
+.pill.upd { background: #e6eefc; color: #1d4aa8; }
+.pill.err { background: #fde7e7; color: #a12626; }
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; inset: 0 auto auto 0; width: 100%; }
+  .no-print { display: none !important; }
+  .print-area table { font-size: 11pt; }
+}
