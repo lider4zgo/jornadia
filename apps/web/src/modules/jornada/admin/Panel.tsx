@@ -6,10 +6,11 @@ import { Today } from './Today';
 import { Report } from './Report';
 import { People } from './People';
 import { Sites } from './Sites';
+import { Schedules } from './Schedules';
 
-type Tab = 'hoy' | 'reporte' | 'personal' | 'obras';
+type Tab = 'hoy' | 'reporte' | 'personal' | 'horarios' | 'obras';
 
-const LABELS: Record<Tab, string> = { hoy: 'Hoy', reporte: 'Reporte', personal: 'Personal', obras: 'Obras' };
+const LABELS: Record<Tab, string> = { hoy: 'Hoy', reporte: 'Reporte', personal: 'Personal', horarios: 'Horarios', obras: 'Obras' };
 
 /** Panel del módulo Jornada. Cada pestaña aparece según los permisos del usuario. */
 export function Panel({ me, section, onChanged }: { me: Me; section: string; onChanged: () => void }) {
@@ -18,6 +19,7 @@ export function Panel({ me, section, onChanged }: { me: Me; section: string; onC
       ['hoy', can(me, 'jornada.asistencia.ver', 'jornada.asistencia.ver_asignadas')],
       ['reporte', can(me, 'jornada.reportes.ver')],
       ['personal', can(me, 'core.personal.ver')],
+      ['horarios', can(me, 'jornada.configurar')],
       ['obras', can(me, 'core.sitios.gestionar')],
     ] as [Tab, boolean][]
   )
@@ -42,6 +44,7 @@ export function Panel({ me, section, onChanged }: { me: Me; section: string; onC
         {tab === 'hoy' && <Today me={me} />}
         {tab === 'reporte' && <Report me={me} />}
         {tab === 'personal' && <People me={me} onChanged={onChanged} />}
+        {tab === 'horarios' && <Schedules me={me} />}
         {tab === 'obras' && <Sites me={me} onChanged={onChanged} />}
       </div>
     </>

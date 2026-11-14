@@ -8,7 +8,8 @@ import { weeklyLimit } from '../types';
 interface ReportRow {
   employee: { id: string; employee_number: string; full_name: string; position: string | null };
   weeks: { weekStart: string; workedMinutes: number; overtimeMinutes: number; nearLimit: boolean; limitHours: number }[];
-  totals: { workedMinutes: number; overtimeMinutes: number; incompleteShifts: number; correctedPunches: number; flaggedPunches: number; restDaysWorked: number; holidaysWorked: number };
+  totals: { workedMinutes: number; overtimeMinutes: number; incompleteShifts: number; correctedPunches: number; flaggedPunches: number; restDaysWorked: number; holidaysWorked: number; outsideScheduleMinutes: number; offScheduleDays: number };
+  schedule: string | null;
 }
 
 const addDays = (iso: string, n: number) => {
@@ -80,7 +81,7 @@ export function Report({ me }: { me: Me }) {
       </div>
       <p className="muted">
         Tope semanal de {from.slice(0, 4)}: {limit} h. Las checadas sin salida no suman horas hasta corregirse. El archivo incluye entradas,
-        salidas, comidas, horas extra por semana y los descansos y festivos trabajados.
+        salidas, comidas, el horario de cada persona, lo trabajado fuera de él, horas extra por semana y los descansos y festivos trabajados.
       </p>
 
       {error && <div className="notice error">{error}</div>}
@@ -97,6 +98,7 @@ export function Report({ me }: { me: Me }) {
                 <th>Trabajador</th>
                 <th className="num">Trabajado</th>
                 <th className="num">Horas extra</th>
+                <th className="num">Fuera de horario</th>
                 <th className="num">Descansos trabajados</th>
                 <th className="num">Festivos trabajados</th>
                 <th className="num">Sin salida</th>
@@ -114,6 +116,13 @@ export function Report({ me }: { me: Me }) {
                   <td className="num">{formatMinutes(r.totals.workedMinutes)}</td>
                   <td className="num" style={{ color: r.totals.overtimeMinutes ? 'var(--stop)' : undefined }}>
                     {r.totals.overtimeMinutes ? formatMinutes(r.totals.overtimeMinutes) : '—'}
+                  </td>
+                  <td className="num" title={r.schedule ? `Horario: ${r.schedule}` : 'Sin horario asignado'}>
+                    {!r.schedule
+                      ? 'Sin horario'
+                      : [r.totals.outsideScheduleMinutes ? formatMinutes(r.totals.outsideScheduleMinutes) : '', r.totals.offScheduleDays ? `${r.totals.offScheduleDays} día(s) fuera` : '']
+                          .filter(Boolean)
+                          .join(' · ') || '—'}
                   </td>
                   <td className="num">{r.totals.restDaysWorked || '—'}</td>
                   <td className="num">{r.totals.holidaysWorked || '—'}</td>

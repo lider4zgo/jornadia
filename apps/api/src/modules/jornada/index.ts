@@ -7,12 +7,14 @@ import { faces } from './faces';
 import { files } from './files';
 import { punches } from './punches';
 import { reports } from './reports';
+import { schedules } from './schedules';
 
 /** Korporia Jornada: registro electrónico de jornada con selfie, geocercas y modo sin conexión. */
 const routes = new Hono<AppEnv>();
 routes.route('/punches', punches);
 routes.route('/reports', reports);
 routes.route('/files', files);
+routes.route('/schedules', schedules);
 routes.route('/employees', faces);
 
 export const jornadaModule: ApiModule = {

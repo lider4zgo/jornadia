@@ -644,6 +644,24 @@ await test('cada administrador ve solo su perfil y lo cambia por la API', async 
   await expectError(asService(`update core.companies set postal_code = '123' where id = $1`, [ids.companyA]));
 });
 
+await test('JOR-10: horarios por día, solo de la propia empresa', async () => {
+  const days = JSON.stringify([{ weekday: 1, start: '09:00', end: '18:00', breakMinutes: 60 }, { weekday: 6, start: '09:00', end: '14:00', breakMinutes: 0 }]);
+  const created = await asUser(ids.admin, `insert into jornada.schedules (company_id, name, days) values ($1, 'Oficina', $2::jsonb) returning id`, [ids.companyA, days]);
+  const scheduleId = created.rows[0].id;
+  await expectError(asUser(ids.worker1, `insert into jornada.schedules (company_id, name, days) values ($1, 'Mío', '[]')`, [ids.companyA]));
+  await expectError(asUser(ids.admin, `insert into jornada.schedules (company_id, name, days) values ($1, 'oficina', '[]')`, [ids.companyA]));
+  const seen = await asUser(ids.worker1, `select days from jornada.schedules where id = $1`, [scheduleId]);
+  assert(seen.rows.length === 1 && seen.rows[0].days.length === 2, 'el colaborador ve su horario');
+  const other = await asUser(ids.ownerB, `select id from jornada.schedules`);
+  assert(other.rows.length === 0, 'otra empresa no ve los horarios');
+  const upsert = `insert into jornada.employee_settings (employee_id, company_id, schedule_id) values ($2, $3, $1)
+    on conflict (employee_id) do update set schedule_id = excluded.schedule_id returning schedule_id`;
+  const ok = await asService(upsert, [scheduleId, ids.emp1, ids.companyA]);
+  assert(ok.rows[0].schedule_id === scheduleId, 'se asigna el horario');
+  const scheduleB = await asService(`insert into jornada.schedules (company_id, name, days) values ($1, 'B', '[]') returning id`, [ids.companyB]);
+  await expectError(asService(upsert, [scheduleB.rows[0].id, ids.emp1, ids.companyA]), 'no pertenece');
+});
+
 console.log(`\n${passed} pruebas correctas, ${failed} fallidas\n`);
 await db.close();
 process.exit(failed ? 1 : 0);

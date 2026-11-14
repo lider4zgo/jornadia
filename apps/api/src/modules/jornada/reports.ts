@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { buildShifts, localDate, summarizeWeeks, weeklyLimitFor, type PunchKind } from '@korporia/jornada';
+import { buildShifts, localDate, outsideSchedule, parseScheduleDays, summarizeWeeks, weeklyLimitFor, type PunchKind, type ScheduleDay } from '@korporia/jornada';
 import { mexicanHolidays } from '@korporia/core';
 import type { AppEnv } from '../../env';
 import { requireAuth, requirePermission, resolveCompany } from '../../lib/auth';
@@ -36,11 +36,13 @@ reports.get('/jornada', async (c) => {
   const employeeFilter = c.req.query('employee_id');
 
   const admin = adminClient(c.env);
-  const [{ data: companyRow }, { data: settings }, { data: companyDays }, { data: profiles }] = await Promise.all([
+  const [{ data: companyRow }, { data: settings }, { data: companyDays }, { data: profiles }, { data: scheduleRows }, { data: employeeSchedules }] = await Promise.all([
     coreDb(admin).from('companies').select('name, timezone').eq('id', companyId).single(),
     jornadaDb(admin).from('settings').select('weekly_hour_limit, weekly_limits').eq('company_id', companyId).maybeSingle(),
     rhDb(admin).from('company_days').select('day, name').eq('company_id', companyId).gte('day', from).lte('day', to),
     rhDb(admin).from('employee_profiles').select('employee_id, rest_days').eq('company_id', companyId),
+    jornadaDb(admin).from('schedules').select('id, name, days, tolerance_minutes').eq('company_id', companyId),
+    jornadaDb(admin).from('employee_settings').select('employee_id, schedule_id').eq('company_id', companyId).not('schedule_id', 'is', null),
   ]);
   if (!companyRow) throw new HTTPException(404, { message: 'Empresa no encontrada.' });
   const limitForYear = (year: number) => weeklyLimitFor(year, settings);
@@ -53,6 +55,11 @@ reports.get('/jornada', async (c) => {
   }
   for (const d of companyDays ?? []) if (!holidays.has(d.day)) holidays.set(d.day, d.name);
   const restDaysOf = new Map<string, number[]>((profiles ?? []).map((p) => [p.employee_id, p.rest_days ?? [7]]));
+  // JOR-10: el horario es referencia; el reporte marca lo trabajado fuera de él
+  const scheduleById = new Map<string, { name: string; days: ScheduleDay[]; tolerance: number }>(
+    (scheduleRows ?? []).map((s) => [s.id, { name: s.name, days: parseScheduleDays(s.days), tolerance: s.tolerance_minutes ?? 0 }]),
+  );
+  const scheduleOf = new Map((employeeSchedules ?? []).map((e) => [e.employee_id, scheduleById.get(e.schedule_id as string) ?? null]));
   const isoWeekday = (date: string) => ((new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7) + 1;
 
   // Margen de un día a cada lado para cubrir zona horaria y turnos nocturnos; luego se filtra por fecha local
@@ -87,13 +94,16 @@ reports.get('/jornada', async (c) => {
       const shifts = buildShifts(punches, tz).filter((s) => s.date >= from && s.date <= to);
       const weeks = summarizeWeeks(shifts, { limitForYear });
       const restDays = restDaysOf.get(e.id) ?? [7];
+      const schedule = scheduleOf.get(e.id) ?? null;
+      const vsSchedule = shifts.map((s) => (schedule ? outsideSchedule(s, schedule.days, tz, schedule.tolerance) : { offDay: false, outsideMinutes: 0 }));
       const inRange = punches.filter((p) => {
         const d = localDate(p.ts, tz);
         return d >= from && d <= to;
       });
       return {
         employee: e,
-        shifts: shifts.map((s) => ({
+        schedule: schedule?.name ?? null,
+        shifts: shifts.map((s, i) => ({
           date: s.date,
           start: s.start.toISOString(),
           end: s.end?.toISOString() ?? null,
@@ -102,6 +112,8 @@ reports.get('/jornada', async (c) => {
           incomplete: s.incomplete,
           restDay: restDays.includes(isoWeekday(s.date)),
           holiday: holidays.get(s.date) ?? null,
+          outsideScheduleMinutes: vsSchedule[i]?.outsideMinutes ?? 0,
+          offScheduleDay: vsSchedule[i]?.offDay ?? false,
         })),
         weeks,
         totals: {
@@ -112,6 +124,8 @@ reports.get('/jornada', async (c) => {
           flaggedPunches: inRange.filter((p) => (p.flags ?? []).length > 0).length,
           restDaysWorked: new Set(shifts.filter((s) => restDays.includes(isoWeekday(s.date))).map((s) => s.date)).size,
           holidaysWorked: new Set(shifts.filter((s) => holidays.has(s.date)).map((s) => s.date)).size,
+          outsideScheduleMinutes: vsSchedule.reduce((a, v) => a + v.outsideMinutes, 0),
+          offScheduleDays: new Set(shifts.filter((_, i) => vsSchedule[i]?.offDay ?? false).map((s) => s.date)).size,
         },
       };
     });
@@ -136,7 +150,7 @@ reports.get('/jornada', async (c) => {
       ['Periodo', `${from} a ${to}`].map(esc).join(','),
       ['Generado', new Date().toISOString()].map(esc).join(','),
       '',
-      ['Número', 'Nombre', 'Puesto', 'Fecha', 'Entrada', 'Salida', 'Comida (min)', 'Trabajado (h)', 'Observaciones'].join(','),
+      ['Número', 'Nombre', 'Puesto', 'Horario', 'Fecha', 'Entrada', 'Salida', 'Comida (min)', 'Trabajado (h)', 'Fuera de horario (h)', 'Observaciones'].join(','),
     ];
     for (const r of report) {
       for (const s of r.shifts) {
@@ -145,12 +159,14 @@ reports.get('/jornada', async (c) => {
             r.employee.employee_number,
             r.employee.full_name,
             r.employee.position ?? '',
+            r.schedule ?? '',
             s.date,
             fmtTime(s.start),
             fmtTime(s.end),
             s.breakMinutes,
             (s.workedMinutes / 60).toFixed(2),
-            [s.incomplete ? 'Sin salida registrada' : '', s.restDay ? 'Descanso semanal trabajado' : '', s.holiday ? `Día de descanso obligatorio trabajado (${s.holiday})` : '']
+            (s.outsideScheduleMinutes / 60).toFixed(2),
+            [s.incomplete ? 'Sin salida registrada' : '', s.offScheduleDay ? 'Día fuera de su horario' : '', s.restDay ? 'Descanso semanal trabajado' : '', s.holiday ? `Día de descanso obligatorio trabajado (${s.holiday})` : '']
               .filter(Boolean)
               .join('; '),
           ]
